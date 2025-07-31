@@ -145,15 +145,15 @@ export default function BlackjackPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen items-center justify-between p-4 sm:p-8 md:p-12 font-body bg-background text-foreground">
-      <header className="w-full max-w-5xl text-center mb-8">
-        <h1 className="text-5xl font-bold text-accent font-headline tracking-tighter">
+    <div className="flex flex-col min-h-screen items-center justify-between p-4 sm:p-6 md:p-8 font-body bg-background text-foreground">
+      <header className="w-full max-w-5xl text-center mb-4 sm:mb-8">
+        <h1 className="text-4xl sm:text-6xl font-bold text-accent font-headline tracking-tighter uppercase">
           Quick Blackjack
         </h1>
-        <p className="text-primary-foreground/70 mt-2">The fastest way to play a hand. Good luck!</p>
+        <p className="text-foreground/60 mt-2 text-sm sm:text-base">The fastest way to play a hand. Good luck!</p>
       </header>
       
-      <main className="flex flex-col items-center justify-center w-full max-w-5xl space-y-8 flex-grow">
+      <main className="flex flex-col items-center justify-center w-full max-w-5xl space-y-6 sm:space-y-8 flex-grow">
         <Hand
           title="Bank's Hand"
           cards={dealerHand}
@@ -162,10 +162,10 @@ export default function BlackjackPage() {
           isPlayerTurn={gameState === 'player-turn'}
         />
 
-        <div className="relative h-24 w-full flex items-center justify-center">
+        <div className="relative h-16 sm:h-24 w-full flex items-center justify-center">
             {gameState === 'game-over' && result && (
-                <div className="animate-slide-in opacity-0 text-center p-4 rounded-lg bg-card/80 backdrop-blur-sm shadow-xl">
-                    <h3 className="text-4xl font-bold text-accent">{result}</h3>
+                <div className="animate-slide-in opacity-0 text-center py-2 px-4 sm:py-3 sm:px-6 rounded-lg bg-card/80 backdrop-blur-sm shadow-2xl shadow-accent/10">
+                    <h3 className="text-2xl sm:text-4xl font-bold text-accent">{result}</h3>
                 </div>
             )}
         </div>
@@ -178,22 +178,22 @@ export default function BlackjackPage() {
         />
       </main>
 
-      <footer className="w-full max-w-5xl mt-8">
-        <div className="flex justify-center items-center space-x-4 p-4 bg-card/50 rounded-lg shadow-inner">
+      <footer className="w-full max-w-5xl mt-6 sm:mt-8">
+        <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4 p-4 bg-card/50 rounded-lg shadow-inner-lg">
           {gameState === 'player-turn' ? (
             <>
-              <Button onClick={handleHit} size="lg" className="w-32 bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Button onClick={handleHit} size="lg" className="w-full sm:w-36 bg-secondary hover:bg-secondary/80 text-secondary-foreground uppercase tracking-wider font-semibold">
                 <Dices className="mr-2" /> Hit
               </Button>
-              <Button onClick={handleStand} variant="secondary" size="lg" className="w-32">
+              <Button onClick={handleStand} variant="outline" size="lg" className="w-full sm:w-36 border-accent/50 text-accent-foreground hover:bg-accent/10 hover:text-accent-foreground uppercase tracking-wider font-semibold">
                 <Shield className="mr-2" /> Stand
               </Button>
-              <Button onClick={handleGetAdvice} variant="outline" size="lg" className="w-32 border-accent text-accent hover:bg-accent/10 hover:text-accent">
+              <Button onClick={handleGetAdvice} variant="ghost" size="lg" className="w-full sm:w-36 text-accent hover:bg-accent/10 hover:text-accent uppercase tracking-wider font-semibold">
                 <Bot className="mr-2" /> Advice
               </Button>
             </>
           ) : (
-            <Button onClick={startGame} size="lg" className="w-48 bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button onClick={startGame} size="lg" className="w-full sm:w-48 bg-accent text-accent-foreground hover:bg-accent/90 uppercase tracking-wider font-bold">
                 <RefreshCw className="mr-2" /> Play Again
             </Button>
           )}
