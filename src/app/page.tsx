@@ -3,16 +3,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Hand } from "@/components/blackjack/Hand";
-import { AdviceDialog } from "@/components/blackjack/AdviceDialog";
 import {
   createDeck,
   shuffleDeck,
   calculateHandValue,
-  cardToString,
   type Card,
 } from "@/lib/blackjack";
-import { getBlackjackAdvice } from "@/ai/flows/blackjack-advice";
-import { RefreshCw, Dices, Shield, Bot } from 'lucide-react';
+import { RefreshCw, Dices, Shield } from 'lucide-react';
 
 type GameState = "player-turn" | "dealer-turn" | "game-over";
 
@@ -22,10 +19,6 @@ export default function BlackjackPage() {
   const [dealerHand, setDealerHand] = useState<Card[]>([]);
   const [gameState, setGameState] = useState<GameState>("player-turn");
   const [result, setResult] = useState<string | null>(null);
-
-  const [advice, setAdvice] = useState<string | null>(null);
-  const [isAdviceLoading, setIsAdviceLoading] = useState(false);
-  const [isAdviceOpen, setIsAdviceOpen] = useState(false);
 
   const playerHandValue = useMemo(() => calculateHandValue(playerHand), [playerHand]);
   const dealerHandValue = useMemo(() => calculateHandValue(dealerHand), [dealerHand]);
@@ -125,25 +118,6 @@ export default function BlackjackPage() {
     }
   }, [gameState, dealerHand, deck, playerHand, dealCard]);
 
-  const handleGetAdvice = async () => {
-    if (playerHand.length === 0 || dealerHand.length < 2) return;
-    setIsAdviceLoading(true);
-    setIsAdviceOpen(true);
-    setAdvice(null);
-    try {
-      const response = await getBlackjackAdvice({
-        playerHand: playerHand.map(cardToString).join(", "),
-        dealerUpCard: cardToString(dealerHand[1]),
-      });
-      setAdvice(response.advice);
-    } catch (error) {
-      console.error("Error getting advice:", error);
-      setAdvice("Sorry, I couldn't get any advice right now.");
-    } finally {
-      setIsAdviceLoading(false);
-    }
-  };
-
   return (
     <div className="flex flex-col min-h-screen items-center justify-between p-4 sm:p-6 md:p-8 font-body bg-background text-foreground">
       <header className="w-full max-w-5xl text-center mb-4 sm:mb-8">
@@ -182,14 +156,11 @@ export default function BlackjackPage() {
         <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4 p-4 bg-card/50 rounded-lg shadow-inner-lg">
           {gameState === 'player-turn' ? (
             <>
-              <Button onClick={handleHit} size="lg" className="w-full sm:w-36 bg-secondary hover:bg-secondary/80 text-secondary-foreground uppercase tracking-wider font-semibold">
+              <Button onClick={handleHit} size="lg" className="w-full sm:w-48 bg-secondary hover:bg-secondary/80 text-secondary-foreground uppercase tracking-wider font-semibold">
                 <Dices className="mr-2" /> Hit
               </Button>
-              <Button onClick={handleStand} variant="outline" size="lg" className="w-full sm:w-36 border-accent/50 text-accent-foreground hover:bg-accent/10 hover:text-accent-foreground uppercase tracking-wider font-semibold">
+              <Button onClick={handleStand} variant="outline" size="lg" className="w-full sm:w-48 border-accent/50 text-accent-foreground hover:bg-accent/10 hover:text-accent-foreground uppercase tracking-wider font-semibold">
                 <Shield className="mr-2" /> Stand
-              </Button>
-              <Button onClick={handleGetAdvice} variant="ghost" size="lg" className="w-full sm:w-36 text-accent hover:bg-accent/10 hover:text-accent uppercase tracking-wider font-semibold">
-                <Bot className="mr-2" /> Advice
               </Button>
             </>
           ) : (
@@ -199,13 +170,6 @@ export default function BlackjackPage() {
           )}
         </div>
       </footer>
-      
-      <AdviceDialog 
-        isOpen={isAdviceOpen}
-        onClose={() => setIsAdviceOpen(false)}
-        advice={advice}
-        isLoading={isAdviceLoading}
-      />
     </div>
   );
 }
