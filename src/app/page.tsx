@@ -153,18 +153,18 @@ export default function BlackjackPage() {
       </main>
 
       <footer className="w-full max-w-5xl mt-6 sm:mt-8">
-        <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4 p-4 bg-card/50 rounded-lg shadow-inner-lg">
+        <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4 p-4 rounded-lg">
           {gameState === 'player-turn' ? (
             <>
-              <Button onClick={handleHit} size="lg" className="w-full sm:w-48 bg-secondary hover:bg-secondary/80 text-secondary-foreground uppercase tracking-wider font-semibold">
+              <Button onClick={handleHit} size="lg" className="w-full sm:w-48 bg-accent text-accent-foreground hover:bg-accent/90 uppercase tracking-wider font-bold shadow-lg">
                 <Dices className="mr-2" /> Hit
               </Button>
-              <Button onClick={handleStand} variant="outline" size="lg" className="w-full sm:w-48 border-accent/50 text-accent-foreground hover:bg-accent/10 hover:text-accent-foreground uppercase tracking-wider font-semibold">
+              <Button onClick={handleStand} variant="outline" size="lg" className="w-full sm:w-48 border-primary/50 text-primary-foreground hover:bg-primary/10 hover:text-primary-foreground uppercase tracking-wider font-semibold shadow-lg">
                 <Shield className="mr-2" /> Stand
               </Button>
             </>
           ) : (
-            <Button onClick={startGame} size="lg" className="w-full sm:w-48 bg-accent text-accent-foreground hover:bg-accent/90 uppercase tracking-wider font-bold">
+            <Button onClick={startGame} size="lg" className="w-full sm:w-48 bg-accent text-accent-foreground hover:bg-accent/90 uppercase tracking-wider font-bold shadow-lg">
                 <RefreshCw className="mr-2" /> Play Again
             </Button>
           )}
