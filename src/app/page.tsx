@@ -60,6 +60,7 @@ export default function BlackjackPage() {
     const initialPlayerHands: Card[][] = Array(numPlayers).fill(0).map(() => []);
     let initialDealerHand: Card[] = [];
     
+    // Deal 2 cards to each player and the dealer
     for (let i = 0; i < 2; i++) {
       for (let j = 0; j < numPlayers; j++) {
         const { card, newDeck } = dealCard(currentDeck);
@@ -78,6 +79,7 @@ export default function BlackjackPage() {
     setGameState("player-turn");
     setResults([]);
 
+    // Check for player Blackjack
     const humanPlayerValue = getBestScore(calculateHandValue(initialPlayerHands[0]));
     if (humanPlayerValue === 21) {
         setGameState("ai-turn");
@@ -85,18 +87,13 @@ export default function BlackjackPage() {
 
   }, [dealCard, numPlayers]);
 
-  useEffect(() => {
-    if(isClient && gameState === "setup"){
-      startGame();
-    }
-  }, [isClient, startGame, gameState]);
-
   const playerHand = useMemo(() => playerHands[currentPlayerIndex] ?? [], [playerHands, currentPlayerIndex]);
   const playerHandValue = useMemo(() => calculateHandValue(playerHand), [playerHand]);
   const dealerHandValue = useMemo(() => calculateHandValue(dealerHand), [dealerHand]);
   
   const dealerVisibleScore = useMemo(() => {
     if (gameState !== 'game-over' && dealerHand.length > 1) {
+      // Show only the value of the visible card (the second one)
       return calculateHandValue([dealerHand[1]]);
     }
     return dealerHandValue;
@@ -104,6 +101,7 @@ export default function BlackjackPage() {
 
   const canDoubleDown = useMemo(() => playerHands[0].length === 2 && gameState === "player-turn", [playerHands, gameState]);
   const canSplit = useMemo(() => {
+      // Basic split condition: two cards of the same rank
       return playerHands[0].length === 2 && playerHands[0][0].rank === playerHands[0][1].rank && gameState === "player-turn";
   }, [playerHands, gameState]);
   
@@ -137,6 +135,7 @@ export default function BlackjackPage() {
   const handleDoubleDown = () => {
     if (!canDoubleDown) return;
 
+    // Deal one more card and immediately stand.
     const { card, newDeck } = dealCard(deck);
     const newPlayerHands = [...playerHands];
     newPlayerHands[0] = [...newPlayerHands[0], card];
@@ -149,6 +148,8 @@ export default function BlackjackPage() {
   const handleSplit = () => {
     if (!canSplit) return;
     alert("La fonctionnalité de Split n'est pas encore implémentée.");
+    // To properly implement split, we would need to manage two separate hands for the player,
+    // including separate betting, which adds significant complexity.
   }
   
   const handleStrategy = () => {
@@ -156,7 +157,7 @@ export default function BlackjackPage() {
   }
 
   const resetGame = () => {
-    setGameState("setup");
+    startGame();
   }
 
   // AI Players' Turn
@@ -171,6 +172,7 @@ export default function BlackjackPage() {
       let currentDeck = [...deck];
       
       const playAiTurn = (aiPlayerIndex: number) => {
+        // Stop if all AI players have played
         if (aiPlayerIndex >= numPlayers) {
             setPlayerHands(currentHands);
             setDeck(currentDeck);
@@ -178,6 +180,7 @@ export default function BlackjackPage() {
             return;
         }
         
+        // Skip human player
         if(aiPlayerIndex === 0) {
             playAiTurn(aiPlayerIndex + 1);
             return;
@@ -190,23 +193,31 @@ export default function BlackjackPage() {
         const aiDecisionLoop = () => {
             const move = getStrategy(aiHand, dealerHand[1]);
             
+            // AI hits if strategy says so and score is under 17 (common simple rule)
             if (move === 'T' && handValue < 17) {
                 const { card, newDeck } = dealCard(currentDeck);
                 aiHand.push(card);
                 currentHands[aiPlayerIndex] = aiHand;
                 currentDeck = newDeck;
                 handValue = getBestScore(calculateHandValue(aiHand));
+                
+                // Update state to show card being dealt
                 setPlayerHands([...currentHands]); 
                 setDeck(currentDeck);
+                
+                // Decide next move after a delay
                 setTimeout(aiDecisionLoop, 1000);
             } else {
+                // Stand and move to the next AI player
                 setTimeout(() => playAiTurn(aiPlayerIndex + 1), 800);
             }
         };
 
+        // Start the decision loop for the current AI
         setTimeout(aiDecisionLoop, 800);
       };
 
+      // Start with the first AI player (index 1)
       playAiTurn(1);
     }
   }, [gameState, playerHands, dealerHand, deck, dealCard, numPlayers]);
@@ -221,6 +232,7 @@ export default function BlackjackPage() {
       let handValue = getBestScore(calculateHandValue(currentDealerHand));
 
       const dealerPlay = () => {
+        // Dealer hits until 17 or more
         if (handValue < 17) {
           const { card, newDeck } = dealCard(currentDeck);
           currentDealerHand = [...currentDealerHand, card];
@@ -230,6 +242,7 @@ export default function BlackjackPage() {
           setDeck(currentDeck);
           setTimeout(dealerPlay, 1000);
         } else {
+          // Determine results once dealer stands
           const dealerScore = handValue;
           const finalResults: string[] = [];
           
@@ -253,12 +266,13 @@ export default function BlackjackPage() {
         }
       };
       
+      // Reveal hole card and start playing after a delay
       setTimeout(dealerPlay, 800);
     }
   }, [gameState, dealerHand, deck, playerHands, dealCard]);
   
   if (!isClient) {
-    return null; 
+    return null; // Render nothing on the server
   }
 
   return (
@@ -307,12 +321,12 @@ export default function BlackjackPage() {
 
       <footer className="w-full max-w-5xl mt-4 sm:mt-8">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-row justify-center items-center md:space-x-4 p-2 sm:p-4 rounded-lg">
-          {gameState === 'game-over' ? (
-              <div className="col-span-2 sm:col-span-3 md:flex md:items-center md:gap-4 w-full flex flex-col items-center gap-4">
+          {gameState === 'game-over' || gameState === 'setup' ? (
+              <div className="col-span-full md:flex md:items-center md:gap-4 w-full flex flex-col items-center gap-4">
                   <div className="flex items-center gap-2 text-lg">
                     <Users className="text-sky-400" />
                     <label htmlFor="player-count">Joueurs (vous + bots) :</label>
-                    <Select value={String(numPlayers)} onValueChange={(val) => setNumPlayers(Number(val))}>
+                    <Select value={String(numPlayers)} onValueChange={(val) => setNumPlayers(Number(val))} disabled={gameState !== 'setup' && gameState !== 'game-over'}>
                         <SelectTrigger className="w-24 bg-zinc-800 border-zinc-700">
                             <SelectValue placeholder="Joueurs" />
                         </SelectTrigger>
