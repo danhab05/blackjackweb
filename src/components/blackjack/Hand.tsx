@@ -1,7 +1,30 @@
 'use client';
 
 import { CardComponent } from './Card';
-import type { Card } from '@/lib/blackjack';
+import type { Card, HandValue } from '@/lib/blackjack';
+
+function formatScore(score: HandValue): string {
+    if (score.hard === 0) return '';
+    if (score.soft && score.soft <= 21 && score.soft !== score.hard) {
+        return `${score.hard} / ${score.soft}`;
+    }
+    
+    let aces = 0;
+    let value = score.hard;
+
+    if (score.soft) {
+        const potentialAces = Math.floor((score.soft - score.hard) / 10);
+        value = score.soft;
+        aces = potentialAces;
+    }
+    
+    while(value > 21 && aces > 0) {
+        value -= 10;
+        aces -= 1;
+    }
+
+    return value.toString();
+}
 
 export function Hand({
   cards,
@@ -12,14 +35,17 @@ export function Hand({
 }: {
   cards: Card[];
   title: string;
-  score: number;
+  score: HandValue;
   isDealer?: boolean;
   isPlayerTurn: boolean;
 }) {
+
+  const displayScore = formatScore(score);
+
   return (
     <div className="flex flex-col items-center space-y-3 sm:space-y-4 w-full">
       <h2 className="text-xl sm:text-2xl font-semibold text-foreground/70 tracking-wider uppercase font-headline">
-        {title} <span className="text-accent font-bold text-2xl sm:text-3xl">{score > 0 ? score : ''}</span>
+        {title} <span className="text-accent font-bold text-2xl sm:text-3xl">{displayScore}</span>
       </h2>
       <div className="flex justify-center items-end space-x-[-5rem] sm:space-x-[-6rem] min-h-[9rem] sm:min-h-[10rem] w-full px-4">
         {cards.map((card, i) => (

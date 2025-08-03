@@ -7,7 +7,9 @@ import {
   createDeck,
   shuffleDeck,
   calculateHandValue,
+  getBestScore,
   type Card,
+  type HandValue,
 } from "@/lib/blackjack";
 import { RefreshCw, Dices, Shield, LucideGitCompare, LucideCopy } from 'lucide-react';
 
@@ -63,8 +65,8 @@ export default function BlackjackPage() {
     setGameState("player-turn");
     setResult(null);
 
-    const playerValue = calculateHandValue(initialPlayerHand);
-    const dealerValue = calculateHandValue(initialDealerHand);
+    const playerValue = getBestScore(calculateHandValue(initialPlayerHand));
+    const dealerValue = getBestScore(calculateHandValue(initialDealerHand));
 
     if (playerValue === 21) {
       setGameState("game-over");
@@ -84,7 +86,7 @@ export default function BlackjackPage() {
     setPlayerHand(newPlayerHand);
     setDeck(newDeck);
 
-    if (calculateHandValue(newPlayerHand) > 21) {
+    if (getBestScore(calculateHandValue(newPlayerHand)) > 21) {
       setGameState("game-over");
       setResult("Bust ! Vous perdez.");
     }
@@ -103,7 +105,7 @@ export default function BlackjackPage() {
     setPlayerHand(newPlayerHand);
     setDeck(newDeck);
     
-    if (calculateHandValue(newPlayerHand) > 21) {
+    if (getBestScore(calculateHandValue(newPlayerHand)) > 21) {
         setGameState("game-over");
         setResult("Bust ! Vous perdez.");
     } else {
@@ -125,20 +127,20 @@ export default function BlackjackPage() {
     if (gameState === "dealer-turn") {
       let currentDealerHand = [...dealerHand];
       let currentDeck = [...deck];
-      let handValue = calculateHandValue(currentDealerHand);
+      let handValue = getBestScore(calculateHandValue(currentDealerHand));
 
       const dealerPlay = () => {
         if (handValue < 17) {
           const { card, newDeck } = dealCard(currentDeck);
           currentDealerHand = [...currentDealerHand, card];
           currentDeck = newDeck;
-          handValue = calculateHandValue(currentDealerHand);
+          handValue = getBestScore(calculateHandValue(currentDealerHand));
           setDealerHand(currentDealerHand);
           setDeck(currentDeck);
           setTimeout(dealerPlay, 800);
         } else {
           setGameState("game-over");
-          const playerValue = calculateHandValue(playerHand);
+          const playerValue = getBestScore(playerHandValue);
           if (handValue > 21 || playerValue > handValue) {
             setResult("Vous gagnez !");
           } else if (playerValue < handValue) {
@@ -151,7 +153,7 @@ export default function BlackjackPage() {
       
       setTimeout(dealerPlay, 500);
     }
-  }, [gameState, dealerHand, deck, playerHand, dealCard]);
+  }, [gameState, dealerHand, deck, playerHand, playerHandValue, dealCard]);
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-between p-4 sm:p-6 md:p-8 font-body bg-background text-foreground">

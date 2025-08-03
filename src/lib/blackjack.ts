@@ -6,6 +6,11 @@ export interface Card {
   rank: Rank;
 }
 
+export type HandValue = {
+  hard: number;
+  soft?: number;
+};
+
 export const SUITS: Suit[] = ['♠', '♥', '♦', '♣'];
 export const RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
@@ -34,16 +39,36 @@ export const getCardValue = (card: Card): number => {
   return parseInt(card.rank, 10);
 };
 
-export const calculateHandValue = (hand: Card[]): number => {
-  let value = hand.reduce((sum, card) => sum + getCardValue(card), 0);
-  let aces = hand.filter((card) => card.rank === 'A').length;
+export const calculateHandValue = (hand: Card[]): HandValue => {
+  let hard = 0;
+  let aces = 0;
 
-  while (value > 21 && aces > 0) {
-    value -= 10;
-    aces -= 1;
+  for (const card of hand) {
+    if (card.rank === 'A') {
+      aces += 1;
+      hard += 1;
+    } else if (['J', 'Q', 'K'].includes(card.rank)) {
+      hard += 10;
+    } else {
+      hard += parseInt(card.rank, 10);
+    }
   }
-  return value;
+  
+  let soft;
+  if (aces > 0) {
+      soft = hard + 10;
+  }
+
+  return { hard, soft };
 };
+
+export const getBestScore = (handValue: HandValue): number => {
+    if (handValue.soft && handValue.soft <= 21) {
+        return handValue.soft;
+    }
+    return handValue.hard;
+}
+
 
 export const cardToString = (card: Card): string => {
     const suitNames: Record<Suit, string> = {
