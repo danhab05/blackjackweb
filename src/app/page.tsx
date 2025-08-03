@@ -11,9 +11,20 @@ import {
   type Card,
   type HandValue,
 } from "@/lib/blackjack";
-import { RefreshCw, Dices, Shield, LucideGitCompare, LucideCopy } from 'lucide-react';
+import { getStrategy } from "@/lib/strategy";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { RefreshCw, Dices, Shield, LucideGitCompare, LucideCopy, BarChart } from 'lucide-react';
 
 type GameState = "player-turn" | "dealer-turn" | "game-over";
+type StrategyMove = 'T' | 'R' | 'D' | 'S' | 'A';
+
+const strategyText: Record<StrategyMove, string> = {
+    'T': "Tirer une carte.",
+    'R': "Rester.",
+    'D': "Doubler votre mise.",
+    'S': "Séparer votre main (Split).",
+    'A': "Abandonner (si possible)."
+};
 
 export default function BlackjackPage() {
   const [deck, setDeck] = useState<Card[]>([]);
@@ -21,6 +32,7 @@ export default function BlackjackPage() {
   const [dealerHand, setDealerHand] = useState<Card[]>([]);
   const [gameState, setGameState] = useState<GameState>("player-turn");
   const [result, setResult] = useState<string | null>(null);
+  const [showStrategyModal, setShowStrategyModal] = useState(false);
 
   const playerHandValue = useMemo(() => calculateHandValue(playerHand), [playerHand]);
   const dealerHandValue = useMemo(() => calculateHandValue(dealerHand), [dealerHand]);
@@ -36,11 +48,17 @@ export default function BlackjackPage() {
   const canSplit = useMemo(() => {
       return playerHand.length === 2 && playerHand[0].rank === playerHand[1].rank && gameState === "player-turn";
   }, [playerHand, gameState]);
+  
+  const recommendedStrategy = useMemo(() => {
+    if (gameState === 'player-turn' && playerHand.length > 0 && dealerHand.length > 1) {
+        return getStrategy(playerHand, dealerHand[1]);
+    }
+    return null;
+  }, [gameState, playerHand, dealerHand]);
 
 
   const dealCard = useCallback((currentDeck: Card[]): { card: Card; newDeck: Card[] } => {
     if (currentDeck.length === 0) {
-        // Reshuffle if deck is empty
         currentDeck = shuffleDeck(createDeck());
     }
     const card = currentDeck[0];
@@ -115,11 +133,12 @@ export default function BlackjackPage() {
 
   const handleSplit = () => {
     if (!canSplit) return;
-    // Basic split logic: we'll just re-deal the hand for now
-    // as full split logic with two hands is a major refactor.
-    // For now, this button will just give a fresh hand.
     alert("La fonctionnalité de Split n'est pas encore complètement implémentée, une nouvelle main sera distribuée.");
     startGame();
+  }
+  
+  const handleStrategy = () => {
+    setShowStrategyModal(true);
   }
 
 
@@ -205,6 +224,9 @@ export default function BlackjackPage() {
                <Button onClick={handleSplit} size="lg" className="w-full sm:w-auto flex-1 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg" disabled={!canSplit}>
                 <LucideGitCompare className="mr-2" /> Split
               </Button>
+              <Button onClick={handleStrategy} size="lg" className="w-full sm:w-auto flex-1 bg-gray-600 hover:bg-gray-700 uppercase tracking-wider font-semibold shadow-lg">
+                  <BarChart className="mr-2" /> Stats
+              </Button>
             </>
           ) : (
             <Button onClick={startGame} size="lg" className="w-full sm:w-48 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg">
@@ -213,6 +235,22 @@ export default function BlackjackPage() {
           )}
         </div>
       </footer>
+      <AlertDialog open={showStrategyModal} onOpenChange={setShowStrategyModal}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Stratégie de base</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      Selon la stratégie de base du Blackjack, le meilleur coup pour votre main actuelle contre la carte visible de la banque est de :
+                      <strong className="block text-center text-lg text-accent mt-4">
+                          {recommendedStrategy ? strategyText[recommendedStrategy] : "Calcul en cours..."}
+                      </strong>
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogAction onClick={() => setShowStrategyModal(false)}>Compris</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
