@@ -9,7 +9,7 @@ import {
   calculateHandValue,
   type Card,
 } from "@/lib/blackjack";
-import { RefreshCw, Dices, Shield } from 'lucide-react';
+import { RefreshCw, Dices, Shield, LucideGitCompare, LucideCopy } from 'lucide-react';
 
 type GameState = "player-turn" | "dealer-turn" | "game-over";
 
@@ -30,7 +30,17 @@ export default function BlackjackPage() {
     return dealerHandValue;
   }, [gameState, dealerHand, dealerHandValue]);
 
+  const canDoubleDown = useMemo(() => playerHand.length === 2 && gameState === "player-turn", [playerHand, gameState]);
+  const canSplit = useMemo(() => {
+      return playerHand.length === 2 && playerHand[0].rank === playerHand[1].rank && gameState === "player-turn";
+  }, [playerHand, gameState]);
+
+
   const dealCard = useCallback((currentDeck: Card[]): { card: Card; newDeck: Card[] } => {
+    if (currentDeck.length === 0) {
+        // Reshuffle if deck is empty
+        currentDeck = shuffleDeck(createDeck());
+    }
     const card = currentDeck[0];
     const newDeck = currentDeck.slice(1);
     return { card, newDeck };
@@ -39,7 +49,6 @@ export default function BlackjackPage() {
   const startGame = useCallback(() => {
     let newDeck = shuffleDeck(createDeck());
     
-    // Deal cards ensuring player and dealer get cards alternately
     const { card: pCard1, newDeck: d1 } = dealCard(newDeck);
     const { card: dCard1, newDeck: d2 } = dealCard(d1);
     const { card: pCard2, newDeck: d3 } = dealCard(d2);
@@ -59,7 +68,7 @@ export default function BlackjackPage() {
 
     if (playerValue === 21) {
       setGameState("game-over");
-      setResult(dealerValue === 21 ? "Push! You both have Blackjack." : "Blackjack! You win!");
+      setResult(dealerValue === 21 ? "Égalité ! Vous avez tous les deux Blackjack." : "Blackjack ! Vous gagnez !");
     }
   }, [dealCard]);
 
@@ -77,7 +86,7 @@ export default function BlackjackPage() {
 
     if (calculateHandValue(newPlayerHand) > 21) {
       setGameState("game-over");
-      setResult("Bust! You lose.");
+      setResult("Bust ! Vous perdez.");
     }
   };
 
@@ -85,6 +94,32 @@ export default function BlackjackPage() {
     if (gameState !== "player-turn") return;
     setGameState("dealer-turn");
   };
+
+  const handleDoubleDown = () => {
+    if (!canDoubleDown) return;
+
+    const { card, newDeck } = dealCard(deck);
+    const newPlayerHand = [...playerHand, card];
+    setPlayerHand(newPlayerHand);
+    setDeck(newDeck);
+    
+    if (calculateHandValue(newPlayerHand) > 21) {
+        setGameState("game-over");
+        setResult("Bust ! Vous perdez.");
+    } else {
+        setGameState("dealer-turn");
+    }
+  }
+
+  const handleSplit = () => {
+    if (!canSplit) return;
+    // Basic split logic: we'll just re-deal the hand for now
+    // as full split logic with two hands is a major refactor.
+    // For now, this button will just give a fresh hand.
+    alert("La fonctionnalité de Split n'est pas encore complètement implémentée, une nouvelle main sera distribuée.");
+    startGame();
+  }
+
 
   useEffect(() => {
     if (gameState === "dealer-turn") {
@@ -105,11 +140,11 @@ export default function BlackjackPage() {
           setGameState("game-over");
           const playerValue = calculateHandValue(playerHand);
           if (handValue > 21 || playerValue > handValue) {
-            setResult("You win!");
+            setResult("Vous gagnez !");
           } else if (playerValue < handValue) {
-            setResult("You lose.");
+            setResult("Vous perdez.");
           } else {
-            setResult("Push.");
+            setResult("Égalité.");
           }
         }
       };
@@ -122,14 +157,14 @@ export default function BlackjackPage() {
     <div className="flex flex-col min-h-screen items-center justify-between p-4 sm:p-6 md:p-8 font-body bg-background text-foreground">
       <header className="w-full max-w-5xl text-center mb-4 sm:mb-8">
         <h1 className="text-4xl sm:text-6xl font-bold text-accent font-headline tracking-tighter uppercase">
-          Quick Blackjack
+          Blackjack Rapide
         </h1>
-        <p className="text-foreground/60 mt-2 text-sm sm:text-base">The fastest way to play a hand. Good luck!</p>
+        <p className="text-foreground/60 mt-2 text-sm sm:text-base">Le moyen le plus rapide de jouer une main. Bonne chance !</p>
       </header>
       
       <main className="flex flex-col items-center justify-center w-full max-w-5xl space-y-6 sm:space-y-8 flex-grow">
         <Hand
-          title="Bank's Hand"
+          title="Main de la Banque"
           cards={dealerHand}
           score={dealerVisibleScore}
           isDealer
@@ -145,7 +180,7 @@ export default function BlackjackPage() {
         </div>
 
         <Hand
-          title="Your Hand"
+          title="Votre Main"
           cards={playerHand}
           score={playerHandValue}
           isPlayerTurn={gameState === 'player-turn'}
@@ -156,16 +191,22 @@ export default function BlackjackPage() {
         <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 p-4 rounded-lg">
           {gameState === 'player-turn' ? (
             <>
-              <Button onClick={handleHit} size="lg" className="w-full sm:w-48 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg">
-                <Dices className="mr-2" /> Hit
+              <Button onClick={handleHit} size="lg" className="w-full sm:w-auto flex-1 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg">
+                <Dices className="mr-2" /> Tirer
               </Button>
-              <Button onClick={handleStand} size="lg" className="w-full sm:w-48 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg">
-                <Shield className="mr-2" /> Stand
+              <Button onClick={handleStand} size="lg" className="w-full sm:w-auto flex-1 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg">
+                <Shield className="mr-2" /> Rester
+              </Button>
+               <Button onClick={handleDoubleDown} size="lg" className="w-full sm:w-auto flex-1 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg" disabled={!canDoubleDown}>
+                <LucideCopy className="mr-2" /> Doubler
+              </Button>
+               <Button onClick={handleSplit} size="lg" className="w-full sm:w-auto flex-1 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg" disabled={!canSplit}>
+                <LucideGitCompare className="mr-2" /> Split
               </Button>
             </>
           ) : (
             <Button onClick={startGame} size="lg" className="w-full sm:w-48 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg">
-                <RefreshCw className="mr-2" /> Play Again
+                <RefreshCw className="mr-2" /> Rejouer
             </Button>
           )}
         </div>
