@@ -52,7 +52,7 @@ export function Hand({
       <h2 className="text-lg sm:text-xl font-semibold text-zinc-400 tracking-wider uppercase font-headline">
         {title} <span className="text-sky-400 font-bold text-xl sm:text-2xl">{displayScore}</span>
       </h2>
-      <div className="flex justify-center items-end space-x-[-5.5rem] sm:space-x-[-7.5rem] min-h-[8rem] sm:min-h-[10rem] w-full px-4">
+      <div className="flex justify-center items-end space-x-[-3.5rem] sm:space-x-[-5.5rem] min-h-[8rem] sm:min-h-[10rem] w-full px-4">
         {cards.map((card, i) => (
           <div
             key={i}
@@ -74,5 +74,3 @@ export function Hand({
     </div>
   );
 }
-
-    
