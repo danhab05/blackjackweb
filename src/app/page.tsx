@@ -58,7 +58,7 @@ export default function BlackjackPage() {
 
 
   const dealCard = useCallback((currentDeck: Card[]): { card: Card; newDeck: Card[] } => {
-    if (currentDeck.length === 0) {
+    if (currentDeck.length < 10) { // Keep a buffer
         currentDeck = shuffleDeck(createDeck());
     }
     const card = currentDeck[0];
@@ -172,7 +172,7 @@ export default function BlackjackPage() {
       
       setTimeout(dealerPlay, 500);
     }
-  }, [gameState, dealerHand, deck, playerHand, playerHandValue, dealCard]);
+  }, [gameState, dealerHand, deck, playerHandValue, dealCard]);
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-between p-4 sm:p-6 md:p-8 font-body bg-background text-foreground">
@@ -183,7 +183,7 @@ export default function BlackjackPage() {
         <p className="text-foreground/60 mt-2 text-sm sm:text-base">Le moyen le plus rapide de jouer une main. Bonne chance !</p>
       </header>
       
-      <main className="flex flex-col items-center justify-center w-full max-w-5xl space-y-6 sm:space-y-8 flex-grow">
+      <main className="flex flex-col items-center justify-center w-full max-w-5xl space-y-4 sm:space-y-8 flex-grow">
         <Hand
           title="Main de la Banque"
           cards={dealerHand}
@@ -192,7 +192,7 @@ export default function BlackjackPage() {
           isPlayerTurn={gameState === 'player-turn'}
         />
 
-        <div className="relative h-16 sm:h-24 w-full flex items-center justify-center">
+        <div className="relative h-12 sm:h-24 w-full flex items-center justify-center">
             {gameState === 'game-over' && result && (
                 <div className="animate-slide-in opacity-0 text-center py-2 px-4 sm:py-3 sm:px-6 rounded-lg bg-card/80 backdrop-blur-sm shadow-2xl shadow-accent/10">
                     <h3 className="text-2xl sm:text-4xl font-bold text-accent">{result}</h3>
@@ -208,28 +208,28 @@ export default function BlackjackPage() {
         />
       </main>
 
-      <footer className="w-full max-w-5xl mt-6 sm:mt-8">
-        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 p-4 rounded-lg">
+      <footer className="w-full max-w-5xl mt-4 sm:mt-8">
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-row justify-center items-center sm:space-x-4 p-2 sm:p-4 rounded-lg">
           {gameState === 'player-turn' ? (
             <>
-              <Button onClick={handleHit} size="lg" className="w-full sm:w-auto flex-1 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg">
-                <Dices className="mr-2" /> Tirer
+              <Button onClick={handleHit} size="lg" className="w-full bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg col-span-1 text-xs px-2">
+                <Dices className="mr-1 sm:mr-2" /> Tirer
               </Button>
-              <Button onClick={handleStand} size="lg" className="w-full sm:w-auto flex-1 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg">
-                <Shield className="mr-2" /> Rester
+              <Button onClick={handleStand} size="lg" className="w-full bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2">
+                <Shield className="mr-1 sm:mr-2" /> Rester
               </Button>
-               <Button onClick={handleDoubleDown} size="lg" className="w-full sm:w-auto flex-1 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg" disabled={!canDoubleDown}>
-                <LucideCopy className="mr-2" /> Doubler
+               <Button onClick={handleDoubleDown} size="lg" className="w-full bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2" disabled={!canDoubleDown}>
+                <LucideCopy className="mr-1 sm:mr-2" /> Doubler
               </Button>
-               <Button onClick={handleSplit} size="lg" className="w-full sm:w-auto flex-1 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg" disabled={!canSplit}>
-                <LucideGitCompare className="mr-2" /> Split
+               <Button onClick={handleSplit} size="lg" className="w-full bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2" disabled={!canSplit}>
+                <LucideGitCompare className="mr-1 sm:mr-2" /> Split
               </Button>
-              <Button onClick={handleStrategy} size="lg" className="w-full sm:w-auto flex-1 bg-gray-600 hover:bg-gray-700 uppercase tracking-wider font-semibold shadow-lg">
-                  <BarChart className="mr-2" /> Stats
+              <Button onClick={handleStrategy} size="lg" className="w-full bg-gray-600 hover:bg-gray-700 uppercase tracking-wider font-semibold shadow-lg col-span-2 text-xs px-2">
+                  <BarChart className="mr-1 sm:mr-2" /> Stratégie
               </Button>
             </>
           ) : (
-            <Button onClick={startGame} size="lg" className="w-full sm:w-48 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg">
+            <Button onClick={startGame} size="lg" className="w-full sm:w-48 bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg col-start-2">
                 <RefreshCw className="mr-2" /> Rejouer
             </Button>
           )}

@@ -43,11 +43,11 @@ export function Hand({
   const displayScore = formatScore(score);
 
   return (
-    <div className="flex flex-col items-center space-y-3 sm:space-y-4 w-full">
-      <h2 className="text-xl sm:text-2xl font-semibold text-foreground/70 tracking-wider uppercase font-headline">
-        {title} <span className="text-accent font-bold text-2xl sm:text-3xl">{displayScore}</span>
+    <div className="flex flex-col items-center space-y-2 sm:space-y-4 w-full">
+      <h2 className="text-lg sm:text-2xl font-semibold text-foreground/70 tracking-wider uppercase font-headline">
+        {title} <span className="text-accent font-bold text-xl sm:text-3xl">{displayScore}</span>
       </h2>
-      <div className="flex justify-center items-end space-x-[-5rem] sm:space-x-[-6rem] min-h-[9rem] sm:min-h-[10rem] w-full px-4">
+      <div className="flex justify-center items-end space-x-[-4.5rem] sm:space-x-[-6rem] min-h-[8rem] sm:min-h-[10rem] w-full px-4">
         {cards.map((card, i) => (
           <div
             key={i}
