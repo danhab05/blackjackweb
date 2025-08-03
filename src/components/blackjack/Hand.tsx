@@ -44,10 +44,10 @@ export function Hand({
 
   return (
     <div className="flex flex-col items-center space-y-2 sm:space-y-4 w-full">
-      <h2 className="text-lg sm:text-2xl font-semibold text-foreground/70 tracking-wider uppercase font-headline">
-        {title} <span className="text-accent font-bold text-xl sm:text-3xl">{displayScore}</span>
+      <h2 className="text-lg sm:text-2xl font-semibold text-zinc-400 tracking-wider uppercase font-headline">
+        {title} <span className="text-sky-400 font-bold text-xl sm:text-3xl">{displayScore}</span>
       </h2>
-      <div className="flex justify-center items-end space-x-[-3.5rem] sm:space-x-[-5rem] min-h-[8rem] sm:min-h-[10rem] w-full px-4">
+      <div className="flex justify-center items-end space-x-[-4.5rem] sm:space-x-[-6rem] min-h-[8rem] sm:min-h-[10rem] w-full px-4">
         {cards.map((card, i) => (
           <div
             key={i}
@@ -60,7 +60,7 @@ export function Hand({
             />
           </div>
         ))}
-        {cards.length === 0 && (
+        {(cards.length === 0 || (isDealer && isPlayerTurn && cards.length === 1)) && (
           <div className="animate-slide-in opacity-0">
              <CardComponent hidden />
           </div>
@@ -69,3 +69,5 @@ export function Hand({
     </div>
   );
 }
+
+    

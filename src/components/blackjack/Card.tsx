@@ -13,9 +13,9 @@ const suitIcons: Record<Suit, ReactNode> = {
 export function CardComponent({ card, hidden, className }: { card?: Card; hidden?: boolean; className?: string }) {
   if (hidden) {
     return (
-      <div className={cn("relative h-28 w-20 sm:h-36 sm:w-28 rounded-lg bg-secondary/20 border-2 border-dashed border-accent/30 shadow-lg backdrop-blur-sm", className)}>
+      <div className={cn("relative h-28 w-20 sm:h-36 sm:w-28 rounded-lg bg-zinc-800/50 border-2 border-dashed border-sky-500/30 shadow-lg backdrop-blur-sm", className)}>
         <div className="flex h-full w-full items-center justify-center">
-            <div className="h-14 w-10 sm:h-16 sm:w-12 rounded-md bg-accent/20 animate-pulse"></div>
+            <div className="h-14 w-10 sm:h-16 sm:w-12 rounded-md bg-sky-500/20 animate-pulse"></div>
         </div>
       </div>
     );
@@ -26,10 +26,10 @@ export function CardComponent({ card, hidden, className }: { card?: Card; hidden
   const isRed = card.suit === '♥' || card.suit === '♦';
 
   return (
-    <div className={cn("relative h-28 w-20 sm:h-36 sm:w-28 rounded-lg bg-card shadow-lg border border-white/10", className)}>
+    <div className={cn("relative h-28 w-20 sm:h-36 sm:w-28 rounded-lg bg-zinc-900 shadow-lg border border-white/10", className)}>
       <div className={cn(
         "flex h-full w-full flex-col justify-between p-1 sm:p-2 font-bold font-headline",
-        isRed ? 'text-destructive' : 'text-foreground'
+        isRed ? 'text-red-500' : 'text-zinc-50'
       )}>
         <div className="flex flex-col items-start">
           <span className="text-lg sm:text-2xl leading-none">{card.rank}</span>
@@ -46,3 +46,5 @@ export function CardComponent({ card, hidden, className }: { card?: Card; hidden
     </div>
   );
 }
+
+    
