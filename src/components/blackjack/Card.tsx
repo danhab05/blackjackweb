@@ -26,7 +26,7 @@ export function CardComponent({ card, hidden, className }: { card?: Card; hidden
   const isRed = card.suit === '♥' || card.suit === '♦';
 
   return (
-    <div className={cn("relative h-28 w-20 sm:h-36 sm:w-28 rounded-lg bg-zinc-900 shadow-lg border border-white/10", className)}>
+    <div className={cn("relative h-28 w-20 sm:h-36 sm:w-28 rounded-lg bg-zinc-900 shadow-xl border border-white/10", className)}>
       <div className={cn(
         "flex h-full w-full flex-col justify-between p-1 sm:p-2 font-bold font-headline",
         isRed ? 'text-red-500' : 'text-zinc-50'

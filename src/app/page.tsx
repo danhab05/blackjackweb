@@ -42,34 +42,12 @@ export default function BlackjackPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  const playerHand = useMemo(() => playerHands[0] ?? [], [playerHands]);
-  const playerHandValue = useMemo(() => calculateHandValue(playerHand), [playerHand]);
-  const dealerHandValue = useMemo(() => calculateHandValue(dealerHand), [dealerHand]);
   
-  const dealerVisibleScore = useMemo(() => {
-    if (gameState !== 'game-over' && dealerHand.length > 1) {
-      return calculateHandValue([dealerHand[1]]);
-    }
-    return dealerHandValue;
-  }, [gameState, dealerHand, dealerHandValue]);
-
-  const canDoubleDown = useMemo(() => playerHand.length === 2 && gameState === "player-turn", [playerHand, gameState]);
-  const canSplit = useMemo(() => {
-      return playerHand.length === 2 && playerHand[0].rank === playerHand[1].rank && gameState === "player-turn";
-  }, [playerHand, gameState]);
-  
-  const recommendedStrategy = useMemo(() => {
-    if (gameState === 'player-turn' && playerHand.length > 0 && dealerHand.length > 1) {
-        return getStrategy(playerHand, dealerHand[1]);
-    }
-    return null;
-  }, [gameState, playerHand, dealerHand]);
-
   const dealCard = useCallback((currentDeck: Card[]): { card: Card; newDeck: Card[] } => {
     let deckToUse = [...currentDeck];
     if (deckToUse.length < 20) { // Keep a buffer
         deckToUse = shuffleDeck(createDeck());
+        setResults(prev => [...prev, "Nouveau paquet mélangé."])
     }
     const card = deckToUse[0];
     const newDeck = deckToUse.slice(1);
@@ -112,30 +90,54 @@ export default function BlackjackPage() {
 
   }, [dealCard, numPlayers]);
 
+
   // Initial deck setup
   useEffect(() => {
     if(isClient){
-      setDeck(shuffleDeck(createDeck()));
+      startGame();
     }
-  }, [isClient]);
+  }, [isClient, startGame]);
+
+  const playerHand = useMemo(() => playerHands[currentPlayerIndex] ?? [], [playerHands, currentPlayerIndex]);
+  const playerHandValue = useMemo(() => calculateHandValue(playerHand), [playerHand]);
+  const dealerHandValue = useMemo(() => calculateHandValue(dealerHand), [dealerHand]);
+  
+  const dealerVisibleScore = useMemo(() => {
+    if (gameState !== 'game-over' && dealerHand.length > 1) {
+      return calculateHandValue([dealerHand[1]]);
+    }
+    return dealerHandValue;
+  }, [gameState, dealerHand, dealerHandValue]);
+
+  const canDoubleDown = useMemo(() => playerHands[0].length === 2 && gameState === "player-turn", [playerHands, gameState]);
+  const canSplit = useMemo(() => {
+      return playerHands[0].length === 2 && playerHands[0][0].rank === playerHands[0][1].rank && gameState === "player-turn";
+  }, [playerHands, gameState]);
+  
+  const recommendedStrategy = useMemo(() => {
+    if (gameState === 'player-turn' && playerHands[0].length > 0 && dealerHand.length > 1) {
+        return getStrategy(playerHands[0], dealerHand[1]);
+    }
+    return null;
+  }, [gameState, playerHands, dealerHand]);
 
   const handleHit = () => {
-    if (gameState !== "player-turn") return;
+    if (gameState !== "player-turn" || currentPlayerIndex !== 0) return;
 
     const { card, newDeck } = dealCard(deck);
     const newPlayerHands = [...playerHands];
-    newPlayerHands[0] = [...newPlayerHands[0], card]; // Only for human player
+    newPlayerHands[0] = [...newPlayerHands[0], card]; 
     
     setPlayerHands(newPlayerHands);
     setDeck(newDeck);
 
     if (getBestScore(calculateHandValue(newPlayerHands[0])) > 21) {
-      setGameState("ai-turn"); // Move to AI turn even if bust
+      setGameState("ai-turn");
     }
   };
 
   const handleStand = () => {
-    if (gameState !== "player-turn") return;
+    if (gameState !== "player-turn" || currentPlayerIndex !== 0) return;
     setGameState("ai-turn");
   };
 
@@ -164,8 +166,8 @@ export default function BlackjackPage() {
     setGameState("setup");
     setResults([]);
     setDealerHand([]);
-    setPlayerHands([[]]);
-    setNumPlayers(1);
+    setPlayerHands(Array(numPlayers).fill([]));
+    startGame();
   }
 
   // AI Players' Turn
@@ -181,39 +183,43 @@ export default function BlackjackPage() {
       
       const playAiTurn = (aiPlayerIndex: number) => {
         if (aiPlayerIndex >= numPlayers) {
-            // All AI players have played
             setPlayerHands(currentHands);
             setDeck(currentDeck);
             setGameState("dealer-turn");
             return;
         }
         
+        // Skip human player
+        if(aiPlayerIndex === 0) {
+            playAiTurn(aiPlayerIndex + 1);
+            return;
+        }
+
+        setCurrentPlayerIndex(aiPlayerIndex);
         let aiHand = [...currentHands[aiPlayerIndex]];
         let handValue = getBestScore(calculateHandValue(aiHand));
         
         const aiDecisionLoop = () => {
             const move = getStrategy(aiHand, dealerHand[1]);
             
-            if (move === 'T' && handValue < 21) {
+            if (move === 'T' && handValue < 17) { // Simplified: bots hit until 17
                 const { card, newDeck } = dealCard(currentDeck);
                 aiHand.push(card);
                 currentHands[aiPlayerIndex] = aiHand;
                 currentDeck = newDeck;
                 handValue = getBestScore(calculateHandValue(aiHand));
-                setPlayerHands([...currentHands]); // Update UI
+                setPlayerHands([...currentHands]); 
                 setDeck(currentDeck);
-                setTimeout(aiDecisionLoop, 800);
+                setTimeout(aiDecisionLoop, 1000);
             } else {
-                // Stand, or bust
-                setTimeout(() => playAiTurn(aiPlayerIndex + 1), 500);
+                setTimeout(() => playAiTurn(aiPlayerIndex + 1), 800);
             }
         };
 
-        aiDecisionLoop();
+        setTimeout(aiDecisionLoop, 800);
       };
 
-      // Start with the first AI player (index 1)
-      playAiTurn(1);
+      playAiTurn(1); // Start with the first AI player
     }
   }, [gameState, playerHands, dealerHand, deck, dealCard, numPlayers]);
 
@@ -221,6 +227,7 @@ export default function BlackjackPage() {
   // Dealer's Turn
   useEffect(() => {
     if (gameState === "dealer-turn") {
+      setCurrentPlayerIndex(-1); // No player is active
       let currentDealerHand = [...dealerHand];
       let currentDeck = [...deck];
       let handValue = getBestScore(calculateHandValue(currentDealerHand));
@@ -233,9 +240,8 @@ export default function BlackjackPage() {
           handValue = getBestScore(calculateHandValue(currentDealerHand));
           setDealerHand(currentDealerHand);
           setDeck(currentDeck);
-          setTimeout(dealerPlay, 800);
+          setTimeout(dealerPlay, 1000);
         } else {
-          // All turns are over, calculate results
           const dealerScore = handValue;
           const finalResults: string[] = [];
           
@@ -246,7 +252,7 @@ export default function BlackjackPage() {
               if (playerValue > 21) {
                   finalResults.push(`${playerLabel} : Bust ! (Perdu)`);
               } else if (dealerScore > 21 || playerValue > dealerScore) {
-                  finalResults.push(`${playerLabel} : Gagné !`);
+                   finalResults.push(`${playerLabel} : Gagné !`);
               } else if (playerValue < dealerScore) {
                   finalResults.push(`${playerLabel} : Perdu.`);
               } else {
@@ -259,7 +265,7 @@ export default function BlackjackPage() {
         }
       };
       
-      setTimeout(dealerPlay, 500);
+      setTimeout(dealerPlay, 800);
     }
   }, [gameState, dealerHand, deck, playerHands, dealCard]);
   
@@ -268,7 +274,7 @@ export default function BlackjackPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen items-center justify-center p-4 sm:p-6 md:p-8 font-body bg-zinc-900 text-zinc-50">
+    <div className="flex flex-col min-h-screen items-center justify-center p-4 sm:p-6 md:p-8 font-body bg-zinc-900 text-zinc-50 overflow-hidden">
       <header className="w-full max-w-7xl text-center mb-4 sm:mb-8">
         <h1 className="text-4xl sm:text-6xl font-bold text-sky-400 font-headline tracking-tighter uppercase">
           Blackjack Rapide
@@ -283,13 +289,13 @@ export default function BlackjackPage() {
               cards={dealerHand}
               score={dealerVisibleScore}
               isDealer
-              isPlayerTurn={gameState === 'player-turn' || gameState === 'ai-turn'}
+              isPlayerTurn={gameState !== 'game-over'}
             />
         )}
 
         <div className="relative h-12 sm:h-24 w-full flex items-center justify-center">
             {gameState === 'game-over' && results.length > 0 && (
-                <div className="animate-slide-in opacity-0 text-center py-2 px-4 sm:py-3 sm:px-6 rounded-lg bg-zinc-800/80 backdrop-blur-sm shadow-2xl shadow-sky-500/10 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                <div className="animate-pop-in opacity-0 text-center py-2 px-4 sm:py-3 sm:px-6 rounded-lg bg-zinc-800/80 backdrop-blur-sm shadow-2xl shadow-sky-500/10 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
                     {results.map((res, i) => <h3 key={i} className="text-md sm:text-lg font-bold text-sky-400">{res}</h3>)}
                 </div>
             )}
@@ -300,10 +306,11 @@ export default function BlackjackPage() {
             {playerHands.map((pHand, index) => (
                 <Hand
                   key={index}
-                  title={index === 0 ? "Votre Main" : `Bot ${index}`}
+                  title={index === 0 ? "Votre Main" : `Bot ${index + 1}`}
                   cards={pHand}
                   score={calculateHandValue(pHand)}
-                  isPlayerTurn={gameState === 'player-turn' && currentPlayerIndex === index}
+                  isPlayerTurn={gameState.startsWith('player') || (gameState === 'ai-turn' && currentPlayerIndex === index)}
+                  isActive={currentPlayerIndex === index && gameState !== 'game-over'}
                 />
             ))}
            </div>
@@ -316,8 +323,11 @@ export default function BlackjackPage() {
               <div className="col-span-2 sm:col-span-3 md:flex md:items-center md:gap-4 w-full flex flex-col items-center gap-4">
                   <div className="flex items-center gap-2 text-lg">
                     <Users className="text-sky-400" />
-                    <label htmlFor="player-count">Joueurs à la table (vous + bots) :</label>
-                    <Select value={String(numPlayers)} onValueChange={(val) => setNumPlayers(Number(val))}>
+                    <label htmlFor="player-count">Joueurs (vous + bots) :</label>
+                    <Select value={String(numPlayers)} onValueChange={(val) => {
+                      setNumPlayers(Number(val));
+                      setPlayerHands(Array(Number(val)).fill([]));
+                    }}>
                         <SelectTrigger className="w-24 bg-zinc-800 border-zinc-700">
                             <SelectValue placeholder="Joueurs" />
                         </SelectTrigger>
@@ -335,16 +345,16 @@ export default function BlackjackPage() {
               </div>
           ) : gameState === 'player-turn' ? (
             <>
-              <Button onClick={handleHit} size="lg" className="w-full bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg col-span-1 text-xs px-2">
+              <Button onClick={handleHit} size="lg" className="bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg col-span-1 text-xs px-2">
                 <Dices className="mr-1 sm:mr-2" /> Tirer
               </Button>
-              <Button onClick={handleStand} size="lg" className="w-full bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2">
+              <Button onClick={handleStand} size="lg" className="bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2">
                 <Shield className="mr-1 sm:mr-2" /> Rester
               </Button>
-               <Button onClick={handleDoubleDown} size="lg" className="w-full bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2" disabled={!canDoubleDown}>
+               <Button onClick={handleDoubleDown} size="lg" className="bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2" disabled={!canDoubleDown}>
                 <LucideCopy className="mr-1 sm:mr-2" /> Doubler
               </Button>
-               <Button onClick={handleSplit} size="lg" className="w-full bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2" disabled={!canSplit}>
+               <Button onClick={handleSplit} size="lg" className="bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2" disabled={!canSplit}>
                 <LucideGitCompare className="mr-1 sm:mr-2" /> Split
               </Button>
               <Button onClick={handleStrategy} size="lg" className="w-full bg-zinc-600 hover:bg-zinc-700 uppercase tracking-wider font-semibold shadow-lg col-span-2 sm:col-span-1 text-xs px-2">
@@ -381,5 +391,3 @@ export default function BlackjackPage() {
     </div>
   );
 }
-
-    
