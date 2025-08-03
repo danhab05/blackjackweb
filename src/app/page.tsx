@@ -286,8 +286,8 @@ export default function BlackjackPage() {
   );
 
   return (
-    <div className="flex flex-col min-h-screen items-center justify-between p-4 sm:p-6 md:p-8 font-body bg-zinc-900 text-zinc-50 overflow-hidden">
-      <header className="w-full max-w-7xl text-center mb-4 sm:mb-8 flex-shrink-0">
+    <div className="flex flex-col min-h-screen items-center p-4 sm:p-6 md:p-8 font-body bg-zinc-900 text-zinc-50 overflow-y-auto">
+      <header className="w-full max-w-7xl text-center my-4 sm:my-8 flex-shrink-0">
         <h1 className="text-4xl sm:text-6xl font-bold text-sky-400 font-headline tracking-tighter uppercase">
           Blackjack Rapide
         </h1>
@@ -329,7 +329,7 @@ export default function BlackjackPage() {
         )}
       </main>
 
-      <footer className="w-full max-w-5xl mt-4 sm:mt-8 flex-shrink-0">
+      <footer className="w-full max-w-5xl my-4 sm:my-8 flex-shrink-0">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-row justify-center items-center md:space-x-4 p-2 sm:p-4 rounded-lg">
           {gameState === 'game-over' || gameState === 'setup' ? (
               <div className="col-span-full md:flex md:items-center md:gap-4 w-full flex flex-col items-center gap-4">
