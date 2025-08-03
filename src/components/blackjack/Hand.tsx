@@ -1,3 +1,4 @@
+
 'use client';
 
 import { CardComponent } from './Card';
@@ -52,12 +53,18 @@ export function Hand({
       <h2 className="text-lg sm:text-xl font-semibold text-muted-foreground tracking-wider uppercase font-headline">
         {title} <span className="text-primary font-bold text-xl sm:text-2xl">{displayScore}</span>
       </h2>
-      <div className="flex justify-center items-end space-x-[-4rem] sm:space-x-[-6rem] min-h-[8rem] sm:min-h-[10rem] w-full px-4">
+      <div className="relative flex justify-center items-center min-h-[8rem] sm:min-h-[10rem] w-full px-4">
         {cards.map((card, i) => (
           <div
             key={i}
-            className="animate-deal-card opacity-0"
-            style={{ animationDelay: `${i * 150}ms`, zIndex: i }}
+            className="animate-deal-card opacity-0 absolute transition-all duration-300 ease-out"
+            style={{ 
+              animationDelay: `${i * 150}ms`, 
+              zIndex: i,
+              // We calculate the offset to spread the cards.
+              // The more cards, the closer they are.
+              left: `calc(50% + ${(i - (cards.length - 1) / 2) * (cards.length > 5 ? 2.5 : 3.5)}rem - 2.5rem)`
+             }}
           >
             <CardComponent
               card={card}
