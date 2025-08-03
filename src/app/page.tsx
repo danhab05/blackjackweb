@@ -15,6 +15,7 @@ import { getStrategy } from "@/lib/strategy";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RefreshCw, Dices, Shield, LucideGitCompare, LucideCopy, BarChart, Users } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 type GameState = "setup" | "player-turn" | "ai-turn" | "dealer-turn" | "game-over";
 type StrategyMove = 'T' | 'R' | 'D' | 'S' | 'A';
@@ -41,6 +42,7 @@ export default function BlackjackPage() {
 
   useEffect(() => {
     setIsClient(true);
+    // Do not start game on load
   }, []);
   
   const dealCard = useCallback((currentDeck: Card[]): { card: Card; newDeck: Card[] } => {
@@ -157,7 +159,10 @@ export default function BlackjackPage() {
   }
 
   const resetGame = () => {
-    startGame();
+    setGameState('setup');
+    setPlayerHands([[]]);
+    setDealerHand([]);
+    setResults([]);
   }
 
   // AI Players' Turn
@@ -275,6 +280,16 @@ export default function BlackjackPage() {
     return null; // Render nothing on the server
   }
 
+  const playerGridClass = cn(
+    "grid gap-4 md:gap-8 w-full transition-all duration-500",
+    {
+        "md:grid-cols-1 lg:grid-cols-1": numPlayers === 1,
+        "md:grid-cols-2 lg:grid-cols-2": numPlayers === 2,
+        "md:grid-cols-2 lg:grid-cols-3": numPlayers === 3,
+        "md:grid-cols-2 lg:grid-cols-4": numPlayers === 4,
+    }
+  );
+
   return (
     <div className="flex flex-col min-h-screen items-center justify-center p-4 sm:p-6 md:p-8 font-body bg-zinc-900 text-zinc-50 overflow-hidden">
       <header className="w-full max-w-7xl text-center mb-4 sm:mb-8">
@@ -304,7 +319,7 @@ export default function BlackjackPage() {
         </div>
 
         {gameState !== "setup" && (
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 w-full">
+           <div className={playerGridClass}>
             {playerHands.map((pHand, index) => (
                 <Hand
                   key={index}
@@ -326,7 +341,7 @@ export default function BlackjackPage() {
                   <div className="flex items-center gap-2 text-lg">
                     <Users className="text-sky-400" />
                     <label htmlFor="player-count">Joueurs (vous + bots) :</label>
-                    <Select value={String(numPlayers)} onValueChange={(val) => setNumPlayers(Number(val))} disabled={gameState !== 'setup' && gameState !== 'game-over'}>
+                    <Select value={String(numPlayers)} onValueChange={(val) => setNumPlayers(Number(val))} disabled={gameState !== 'setup'}>
                         <SelectTrigger className="w-24 bg-zinc-800 border-zinc-700">
                             <SelectValue placeholder="Joueurs" />
                         </SelectTrigger>
@@ -338,9 +353,14 @@ export default function BlackjackPage() {
                         </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={resetGame} size="lg" className="w-full sm:w-auto bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg">
+                   <Button onClick={startGame} size="lg" className="w-full sm:w-auto bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg">
                       <RefreshCw className="mr-2" /> Nouvelle Partie
                   </Button>
+                  {gameState === 'game-over' && (
+                     <Button onClick={resetGame} size="lg" variant="outline" className="w-full sm:w-auto">
+                        Changer les options
+                    </Button>
+                  )}
               </div>
           ) : gameState === 'player-turn' ? (
             <>
