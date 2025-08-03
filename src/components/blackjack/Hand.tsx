@@ -46,13 +46,13 @@ export function Hand({
 
   return (
     <div className={cn(
-        "flex flex-col items-center space-y-2 sm:space-y-4 w-full bg-zinc-800/50 p-4 rounded-lg border border-white/5 transition-all duration-300",
-        isActive && "shadow-lg shadow-sky-500/30 border-sky-500/50 scale-105"
+        "flex flex-col items-center space-y-2 sm:space-y-4 w-full bg-secondary/50 p-4 rounded-lg border border-border transition-all duration-300",
+        isActive && "shadow-lg shadow-primary/30 border-primary/50 scale-105"
         )}>
-      <h2 className="text-lg sm:text-xl font-semibold text-zinc-400 tracking-wider uppercase font-headline">
-        {title} <span className="text-sky-400 font-bold text-xl sm:text-2xl">{displayScore}</span>
+      <h2 className="text-lg sm:text-xl font-semibold text-muted-foreground tracking-wider uppercase font-headline">
+        {title} <span className="text-primary font-bold text-xl sm:text-2xl">{displayScore}</span>
       </h2>
-      <div className="flex justify-center items-end space-x-[-3.5rem] sm:space-x-[-5.5rem] min-h-[8rem] sm:min-h-[10rem] w-full px-4">
+      <div className="flex justify-center items-end space-x-[-4rem] sm:space-x-[-6rem] min-h-[8rem] sm:min-h-[10rem] w-full px-4">
         {cards.map((card, i) => (
           <div
             key={i}

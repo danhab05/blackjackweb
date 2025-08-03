@@ -47,14 +47,19 @@ export default function BlackjackPage() {
     setIsClient(true);
     const savedTheme = localStorage.getItem('blackjack-theme') as Theme || 'dark';
     setTheme(savedTheme);
-    document.documentElement.classList.add(savedTheme);
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
   }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    document.documentElement.classList.remove(theme);
-    document.documentElement.classList.add(newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
     localStorage.setItem('blackjack-theme', newTheme);
   };
   
@@ -181,61 +186,52 @@ export default function BlackjackPage() {
   // AI Players' Turn
   useEffect(() => {
     if (gameState === "ai-turn") {
-      const playNextAi = async (aiIndex: number) => {
-        if (aiIndex >= numPlayers) {
+      let currentIndex = 1; // Start with the first bot
+      let currentDeck = deck;
+      let hands = [...playerHands];
+  
+      const playNextAi = () => {
+        if (currentIndex >= numPlayers) {
           setGameState("dealer-turn");
           return;
         }
-
-        // Skip human player
-        if (aiIndex === 0) {
-          playNextAi(aiIndex + 1);
-          return;
-        }
-        
-        setCurrentPlayerIndex(aiIndex);
-
-        let hands = [...playerHands];
-        let currentDeck = deck;
-        let hand = hands[aiIndex];
-        let handValue = getBestScore(calculateHandValue(hand));
-
-        const playTurn = async () => {
-            if (getBestScore(calculateHandValue(hand)) < 17) {
-                const move = getStrategy(hand, dealerHand[1]);
-                 if (move !== 'T' && move !== 'D') { // AI can double, treat as hit for now
-                    // AI stands, move to next
-                    await new Promise(resolve => setTimeout(resolve, 800));
-                    playNextAi(aiIndex + 1);
-                    return;
-                }
-
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                const { card, newDeck } = dealCard(currentDeck);
-                hand = [...hand, card];
-                const newHands = [...playerHands];
-                newHands[aiIndex] = hand;
-                setPlayerHands(newHands);
-                setDeck(newDeck);
-                currentDeck = newDeck;
-                
-                playTurn(); // Recurse for the same player
-            } else {
-                 // AI stands, move to next
-                await new Promise(resolve => setTimeout(resolve, 800));
-                playNextAi(aiIndex + 1);
+  
+        setCurrentPlayerIndex(currentIndex);
+  
+        const playTurnForCurrentBot = async () => {
+          let hand = hands[currentIndex];
+          let handValue = getBestScore(calculateHandValue(hand));
+  
+          if (handValue < 17) {
+            const move = getStrategy(hand, dealerHand[1]);
+            if (move !== 'T' && move !== 'D') {
+              // AI stands
+              currentIndex++;
+              playNextAi();
+              return;
             }
+  
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const { card, newDeck } = dealCard(currentDeck);
+            currentDeck = newDeck;
+            hand = [...hand, card];
+            hands[currentIndex] = hand;
+            setPlayerHands([...hands]);
+            setDeck(currentDeck);
+            
+            // Recurse for the same bot
+            playTurnForCurrentBot();
+          } else {
+            // AI stands
+            currentIndex++;
+            playNextAi();
+          }
         };
-
-        playTurn();
+  
+        playTurnForCurrentBot();
       };
-
-      if (numPlayers > 1) {
-        playNextAi(1);
-      } else {
-        setGameState("dealer-turn");
-      }
+  
+      playNextAi();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, numPlayers, dealerHand, dealCard]);
@@ -306,13 +302,13 @@ export default function BlackjackPage() {
     <div className="flex flex-col min-h-screen items-center p-4 sm:p-6 md:p-8 font-body bg-background text-foreground overflow-y-auto">
       <header className="w-full max-w-7xl flex justify-between items-center my-4 sm:my-8 flex-shrink-0">
         <div className="text-left">
-            <h1 className="text-4xl sm:text-6xl font-bold text-sky-400 font-headline tracking-tighter uppercase">
+            <h1 className="text-4xl sm:text-6xl font-bold text-primary font-headline tracking-tighter uppercase">
             Blackjack Rapide
             </h1>
-            <p className="text-zinc-400 mt-2 text-sm sm:text-base">Le moyen le plus rapide de jouer une main. Bonne chance !</p>
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">Le moyen le plus rapide de jouer une main. Bonne chance !</p>
         </div>
-        <Button onClick={toggleTheme} variant="outline" size="icon" className="border-zinc-700 bg-zinc-800/50 hover:bg-zinc-700/50">
-            {theme === 'dark' ? <Sun className="h-[1.2rem] w-[1.2rem] text-sky-400" /> : <Moon className="h-[1.2rem] w-[1.2rem] text-sky-400" />}
+        <Button onClick={toggleTheme} variant="outline" size="icon">
+            {theme === 'dark' ? <Sun className="h-[1.2rem] w-[1.2rem] text-primary" /> : <Moon className="h-[1.2rem] w-[1.2rem] text-primary" />}
             <span className="sr-only">Toggle theme</span>
         </Button>
       </header>
@@ -330,8 +326,8 @@ export default function BlackjackPage() {
 
         <div className="relative h-12 sm:h-24 w-full flex items-center justify-center">
             {gameState === 'game-over' && results.length > 0 && (
-                <div className="animate-pop-in opacity-0 text-center py-2 px-4 sm:py-3 sm:px-6 rounded-lg bg-zinc-800/80 backdrop-blur-sm shadow-2xl shadow-sky-500/10 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
-                    {results.map((res, i) => <h3 key={i} className="text-md sm:text-lg font-bold text-sky-400">{res}</h3>)}
+                <div className="animate-pop-in opacity-0 text-center py-2 px-4 sm:py-3 sm:px-6 rounded-lg bg-card/80 backdrop-blur-sm shadow-2xl shadow-primary/10 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                    {results.map((res, i) => <h3 key={i} className="text-md sm:text-lg font-bold text-primary">{res}</h3>)}
                 </div>
             )}
         </div>
@@ -357,13 +353,13 @@ export default function BlackjackPage() {
           {gameState === 'game-over' || gameState === 'setup' ? (
               <div className="col-span-full md:flex md:items-center md:gap-4 w-full flex flex-col items-center gap-4">
                   <div className="flex items-center gap-2 text-lg">
-                    <Users className="text-sky-400" />
+                    <Users className="text-primary" />
                     <label htmlFor="player-count">Joueurs (vous + bots) :</label>
                     <Select value={String(numPlayers)} onValueChange={(val) => setNumPlayers(Number(val))} disabled={gameState !== 'setup'}>
-                        <SelectTrigger className="w-24 bg-zinc-800 border-zinc-700">
+                        <SelectTrigger className="w-24 bg-card border-border">
                             <SelectValue placeholder="Joueurs" />
                         </SelectTrigger>
-                        <SelectContent className="bg-zinc-800 border-zinc-700 text-zinc-50">
+                        <SelectContent>
                             <SelectItem value="1">1</SelectItem>
                             <SelectItem value="2">2</SelectItem>
                             <SelectItem value="3">3</SelectItem>
@@ -371,7 +367,7 @@ export default function BlackjackPage() {
                         </SelectContent>
                     </Select>
                   </div>
-                   <Button onClick={startGame} size="lg" className="w-full sm:w-auto bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg">
+                   <Button onClick={startGame} size="lg" variant="default" className="w-full sm:w-auto uppercase tracking-wider font-bold shadow-lg bg-primary text-primary-foreground hover:bg-primary/90">
                       <RefreshCw className="mr-2" /> Nouvelle Partie
                   </Button>
                   {gameState === 'game-over' && (
@@ -382,42 +378,42 @@ export default function BlackjackPage() {
               </div>
           ) : gameState === 'player-turn' ? (
             <>
-              <Button onClick={handleHit} size="lg" className="bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-bold shadow-lg col-span-1 text-xs px-2">
+              <Button onClick={handleHit} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 uppercase tracking-wider font-bold shadow-lg col-span-1 text-xs px-2">
                 <Dices className="mr-1 sm:mr-2" /> Tirer
               </Button>
-              <Button onClick={handleStand} size="lg" className="bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2">
+              <Button onClick={handleStand} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2">
                 <Shield className="mr-1 sm:mr-2" /> Rester
               </Button>
-               <Button onClick={handleDoubleDown} size="lg" className="bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2" disabled={!canDoubleDown}>
+               <Button onClick={handleDoubleDown} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2" disabled={!canDoubleDown}>
                 <LucideCopy className="mr-1 sm:mr-2" /> Doubler
               </Button>
-               <Button onClick={handleSplit} size="lg" className="bg-blue-600 text-black hover:bg-blue-700 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2" disabled={!canSplit}>
+               <Button onClick={handleSplit} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 uppercase tracking-wider font-semibold shadow-lg col-span-1 text-xs px-2" disabled={!canSplit}>
                 <LucideGitCompare className="mr-1 sm:mr-2" /> Split
               </Button>
-              <Button onClick={handleStrategy} size="lg" className="w-full bg-zinc-600 hover:bg-zinc-700 uppercase tracking-wider font-semibold shadow-lg col-span-2 sm:col-span-1 text-xs px-2">
+              <Button onClick={handleStrategy} size="lg" variant="secondary" className="w-full uppercase tracking-wider font-semibold shadow-lg col-span-2 sm:col-span-1 text-xs px-2">
                   <BarChart className="mr-1 sm:mr-2" /> Stratégie
               </Button>
             </>
           ) : (
             <div className="text-center col-span-full w-full">
-              <p className="text-sky-400 text-lg animate-pulse">Tour des bots...</p>
+              <p className="text-primary text-lg animate-pulse">Tour des bots...</p>
             </div>
           )}
         </div>
       </footer>
       <AlertDialog open={showStrategyModal} onOpenChange={setShowStrategyModal}>
-          <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+          <AlertDialogContent>
               <AlertDialogHeader>
-                  <AlertDialogTitle className="text-sky-400">Stratégie de base</AlertDialogTitle>
-                  <AlertDialogDescription className="text-zinc-400">
+                  <AlertDialogTitle className="text-primary">Stratégie de base</AlertDialogTitle>
+                  <AlertDialogDescription>
                       Selon la stratégie de base du Blackjack, le meilleur coup pour votre main actuelle contre la carte visible de la banque est de :
-                      <strong className="block text-center text-lg text-sky-400 mt-4">
+                      <strong className="block text-center text-lg text-primary mt-4">
                           {recommendedStrategy ? strategyText[recommendedStrategy] : "Calcul en cours..."}
                       </strong>
                   </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                  <AlertDialogAction className="bg-sky-500 hover:bg-sky-600" onClick={() => setShowStrategyModal(false)}>Compris</AlertDialogAction>
+                  <Button onClick={() => setShowStrategyModal(false)}>Compris</Button>
               </AlertDialogFooter>
           </AlertDialogContent>
       </AlertDialog>
