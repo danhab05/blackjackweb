@@ -33,6 +33,11 @@ export default function BlackjackPage() {
   const [gameState, setGameState] = useState<GameState>("player-turn");
   const [result, setResult] = useState<string | null>(null);
   const [showStrategyModal, setShowStrategyModal] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const playerHandValue = useMemo(() => calculateHandValue(playerHand), [playerHand]);
   const dealerHandValue = useMemo(() => calculateHandValue(dealerHand), [dealerHand]);
@@ -56,13 +61,13 @@ export default function BlackjackPage() {
     return null;
   }, [gameState, playerHand, dealerHand]);
 
-
   const dealCard = useCallback((currentDeck: Card[]): { card: Card; newDeck: Card[] } => {
-    if (currentDeck.length < 10) { // Keep a buffer
-        currentDeck = shuffleDeck(createDeck());
+    let deckToUse = [...currentDeck];
+    if (deckToUse.length < 10) { // Keep a buffer
+        deckToUse = shuffleDeck(createDeck());
     }
-    const card = currentDeck[0];
-    const newDeck = currentDeck.slice(1);
+    const card = deckToUse[0];
+    const newDeck = deckToUse.slice(1);
     return { card, newDeck };
   }, []);
 
@@ -93,8 +98,10 @@ export default function BlackjackPage() {
   }, [dealCard]);
 
   useEffect(() => {
-    startGame();
-  }, [startGame]);
+    if (isClient) {
+      startGame();
+    }
+  }, [startGame, isClient]);
 
   const handleHit = () => {
     if (gameState !== "player-turn") return;
@@ -173,6 +180,10 @@ export default function BlackjackPage() {
       setTimeout(dealerPlay, 500);
     }
   }, [gameState, dealerHand, deck, playerHandValue, dealCard]);
+  
+  if (!isClient) {
+    return null; 
+  }
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-between p-4 sm:p-6 md:p-8 font-body bg-background text-foreground">
