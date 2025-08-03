@@ -168,64 +168,59 @@ export default function BlackjackPage() {
   // AI Players' Turn
   useEffect(() => {
     if (gameState === "ai-turn") {
-      if (numPlayers <= 1) {
-        setGameState("dealer-turn");
-        return;
-      }
-
-      let currentHands = [...playerHands];
-      let currentDeck = [...deck];
-      
-      const playAiTurn = (aiPlayerIndex: number) => {
-        // Stop if all AI players have played
-        if (aiPlayerIndex >= numPlayers) {
-            setPlayerHands(currentHands);
-            setDeck(currentDeck);
-            setGameState("dealer-turn");
-            return;
+      const playNextAi = async (aiIndex: number) => {
+        if (aiIndex >= numPlayers) {
+          setGameState("dealer-turn");
+          return;
         }
-        
+
         // Skip human player
-        if(aiPlayerIndex === 0) {
-            playAiTurn(aiPlayerIndex + 1);
-            return;
+        if (aiIndex === 0) {
+          playNextAi(aiIndex + 1);
+          return;
         }
-
-        setCurrentPlayerIndex(aiPlayerIndex);
-        let aiHand = [...currentHands[aiPlayerIndex]];
-        let handValue = getBestScore(calculateHandValue(aiHand));
         
-        const aiDecisionLoop = () => {
-            const move = getStrategy(aiHand, dealerHand[1]);
-            
-            // AI hits if strategy says so and score is under 17 (common simple rule)
-            if (move === 'T' && handValue < 17) {
-                const { card, newDeck } = dealCard(currentDeck);
-                aiHand.push(card);
-                currentHands[aiPlayerIndex] = aiHand;
-                currentDeck = newDeck;
-                handValue = getBestScore(calculateHandValue(aiHand));
-                
-                // Update state to show card being dealt
-                setPlayerHands([...currentHands]); 
-                setDeck(currentDeck);
-                
-                // Decide next move after a delay
-                setTimeout(aiDecisionLoop, 1000);
-            } else {
-                // Stand and move to the next AI player
-                setTimeout(() => playAiTurn(aiPlayerIndex + 1), 800);
-            }
-        };
+        setCurrentPlayerIndex(aiIndex);
 
-        // Start the decision loop for the current AI
-        setTimeout(aiDecisionLoop, 800);
+        let hands = playerHands;
+        let currentDeck = deck;
+        let hand = hands[aiIndex];
+        let handValue = getBestScore(calculateHandValue(hand));
+
+        while (handValue < 17) {
+          const move = getStrategy(hand, dealerHand[1]);
+          if (move !== 'T') {
+            break;
+          }
+
+          // Delay for visual effect
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          const { card, newDeck } = dealCard(currentDeck);
+          hand = [...hand, card];
+          hands = [...hands]; // Create new array for state update
+          hands[aiIndex] = hand;
+          currentDeck = newDeck;
+          
+          setPlayerHands(hands);
+          setDeck(currentDeck);
+
+          handValue = getBestScore(calculateHandValue(hand));
+        }
+        
+        // Delay before moving to the next player
+        await new Promise(resolve => setTimeout(resolve, 800));
+        playNextAi(aiIndex + 1);
       };
 
-      // Start with the first AI player (index 1)
-      playAiTurn(1);
+      if (numPlayers > 1) {
+        playNextAi(1);
+      } else {
+        setGameState("dealer-turn");
+      }
     }
-  }, [gameState, playerHands, dealerHand, deck, dealCard, numPlayers]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, numPlayers, dealerHand, dealCard]);
 
 
   // Dealer's Turn
@@ -234,15 +229,14 @@ export default function BlackjackPage() {
       setCurrentPlayerIndex(-1); // No player is active
       let currentDealerHand = [...dealerHand];
       let currentDeck = [...deck];
-      let handValue = getBestScore(calculateHandValue(currentDealerHand));
-
+      
       const dealerPlay = () => {
+        let handValue = getBestScore(calculateHandValue(currentDealerHand));
         // Dealer hits until 17 or more
         if (handValue < 17) {
           const { card, newDeck } = dealCard(currentDeck);
           currentDealerHand = [...currentDealerHand, card];
           currentDeck = newDeck;
-          handValue = getBestScore(calculateHandValue(currentDealerHand));
           setDealerHand(currentDealerHand);
           setDeck(currentDeck);
           setTimeout(dealerPlay, 1000);
@@ -274,7 +268,8 @@ export default function BlackjackPage() {
       // Reveal hole card and start playing after a delay
       setTimeout(dealerPlay, 800);
     }
-  }, [gameState, dealerHand, deck, playerHands, dealCard]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, dealCard]);
   
   if (!isClient) {
     return null; // Render nothing on the server
