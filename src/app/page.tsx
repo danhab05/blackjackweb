@@ -14,11 +14,12 @@ import {
 import { getStrategy } from "@/lib/strategy";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Dices, Shield, LucideGitCompare, LucideCopy, BarChart, Users } from 'lucide-react';
+import { RefreshCw, Dices, Shield, LucideGitCompare, LucideCopy, BarChart, Users, Sun, Moon } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 type GameState = "setup" | "player-turn" | "ai-turn" | "dealer-turn" | "game-over";
 type StrategyMove = 'T' | 'R' | 'D' | 'S' | 'A';
+type Theme = 'dark' | 'light';
 
 const strategyText: Record<StrategyMove, string> = {
     'T': "Tirer une carte.",
@@ -39,11 +40,21 @@ export default function BlackjackPage() {
   const [numPlayers, setNumPlayers] = useState(1);
   const [playerHands, setPlayerHands] = useState<Card[][]>([[]]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [theme, setTheme] = useState<Theme>('dark');
+
 
   useEffect(() => {
     setIsClient(true);
-    // Do not start game on load
+    // Set initial theme
+    document.documentElement.classList.add('dark');
   }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    document.documentElement.classList.toggle('light', newTheme === 'light');
+  };
   
   const dealCard = useCallback((currentDeck: Card[]): { card: Card; newDeck: Card[] } => {
     let deckToUse = [...currentDeck];
@@ -101,10 +112,10 @@ export default function BlackjackPage() {
     return dealerHandValue;
   }, [gameState, dealerHand, dealerHandValue]);
 
-  const canDoubleDown = useMemo(() => playerHands[0].length === 2 && gameState === "player-turn", [playerHands, gameState]);
+  const canDoubleDown = useMemo(() => playerHands.length > 0 && playerHands[0].length === 2 && gameState === "player-turn", [playerHands, gameState]);
   const canSplit = useMemo(() => {
       // Basic split condition: two cards of the same rank
-      return playerHands[0].length === 2 && playerHands[0][0].rank === playerHands[0][1].rank && gameState === "player-turn";
+      return playerHands.length > 0 && playerHands[0].length === 2 && playerHands[0][0].rank === playerHands[0][1].rank && gameState === "player-turn";
   }, [playerHands, gameState]);
   
   const recommendedStrategy = useMemo(() => {
@@ -220,7 +231,7 @@ export default function BlackjackPage() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState, numPlayers, dealerHand, dealCard]);
+  }, [gameState, numPlayers, dealerHand]);
 
 
   // Dealer's Turn
@@ -278,8 +289,7 @@ export default function BlackjackPage() {
   const playerGridClass = cn(
     "grid gap-4 md:gap-8 w-full transition-all duration-500",
     {
-        "md:grid-cols-1 lg:grid-cols-1": numPlayers === 1,
-        "md:grid-cols-2 lg:grid-cols-2": numPlayers === 2,
+        "md:grid-cols-1 lg:grid-cols-1": numPlayers <= 2,
         "md:grid-cols-2 lg:grid-cols-3": numPlayers === 3,
         "md:grid-cols-2 lg:grid-cols-4": numPlayers === 4,
     }
@@ -287,11 +297,17 @@ export default function BlackjackPage() {
 
   return (
     <div className="flex flex-col min-h-screen items-center p-4 sm:p-6 md:p-8 font-body bg-zinc-900 text-zinc-50 overflow-y-auto">
-      <header className="w-full max-w-7xl text-center my-4 sm:my-8 flex-shrink-0">
-        <h1 className="text-4xl sm:text-6xl font-bold text-sky-400 font-headline tracking-tighter uppercase">
-          Blackjack Rapide
-        </h1>
-        <p className="text-zinc-400 mt-2 text-sm sm:text-base">Le moyen le plus rapide de jouer une main. Bonne chance !</p>
+      <header className="w-full max-w-7xl flex justify-between items-center my-4 sm:my-8 flex-shrink-0">
+        <div className="text-left">
+            <h1 className="text-4xl sm:text-6xl font-bold text-sky-400 font-headline tracking-tighter uppercase">
+            Blackjack Rapide
+            </h1>
+            <p className="text-zinc-400 mt-2 text-sm sm:text-base">Le moyen le plus rapide de jouer une main. Bonne chance !</p>
+        </div>
+        <Button onClick={toggleTheme} variant="outline" size="icon" className="border-zinc-700 bg-zinc-800/50 hover:bg-zinc-700/50">
+            {theme === 'dark' ? <Sun className="h-[1.2rem] w-[1.2rem] text-sky-400" /> : <Moon className="h-[1.2rem] w-[1.2rem] text-sky-400" />}
+            <span className="sr-only">Toggle theme</span>
+        </Button>
       </header>
       
       <main className="flex flex-col items-center justify-center w-full max-w-7xl space-y-4 sm:space-y-8 flex-grow">
