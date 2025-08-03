@@ -45,15 +45,17 @@ export default function BlackjackPage() {
 
   useEffect(() => {
     setIsClient(true);
-    // Set initial theme
-    document.documentElement.classList.add('dark');
+    const savedTheme = localStorage.getItem('blackjack-theme') as Theme || 'dark';
+    setTheme(savedTheme);
+    document.documentElement.classList.add(savedTheme);
   }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-    document.documentElement.classList.toggle('light', newTheme === 'light');
+    document.documentElement.classList.remove(theme);
+    document.documentElement.classList.add(newTheme);
+    localStorage.setItem('blackjack-theme', newTheme);
   };
   
   const dealCard = useCallback((currentDeck: Card[]): { card: Card; newDeck: Card[] } => {
@@ -198,30 +200,35 @@ export default function BlackjackPage() {
         let hand = hands[aiIndex];
         let handValue = getBestScore(calculateHandValue(hand));
 
-        while (handValue < 17) {
-          const move = getStrategy(hand, dealerHand[1]);
-          if (move !== 'T' && move !== 'D') { // AI can double, treat as hit for now
-            break;
-          }
+        const playTurn = async () => {
+            if (getBestScore(calculateHandValue(hand)) < 17) {
+                const move = getStrategy(hand, dealerHand[1]);
+                 if (move !== 'T' && move !== 'D') { // AI can double, treat as hit for now
+                    // AI stands, move to next
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    playNextAi(aiIndex + 1);
+                    return;
+                }
 
-          // Delay for visual effect
-          await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 1000));
 
-          const { card, newDeck } = dealCard(currentDeck);
-          hand = [...hand, card];
-          let newHands = [...playerHands];
-          newHands[aiIndex] = hand;
-          currentDeck = newDeck;
-          
-          setPlayerHands(newHands);
-          setDeck(currentDeck);
+                const { card, newDeck } = dealCard(currentDeck);
+                hand = [...hand, card];
+                const newHands = [...playerHands];
+                newHands[aiIndex] = hand;
+                setPlayerHands(newHands);
+                setDeck(newDeck);
+                currentDeck = newDeck;
+                
+                playTurn(); // Recurse for the same player
+            } else {
+                 // AI stands, move to next
+                await new Promise(resolve => setTimeout(resolve, 800));
+                playNextAi(aiIndex + 1);
+            }
+        };
 
-          handValue = getBestScore(calculateHandValue(hand));
-        }
-        
-        // Delay before moving to the next player
-        await new Promise(resolve => setTimeout(resolve, 800));
-        playNextAi(aiIndex + 1);
+        playTurn();
       };
 
       if (numPlayers > 1) {
@@ -231,7 +238,7 @@ export default function BlackjackPage() {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState, numPlayers, dealerHand]);
+  }, [gameState, numPlayers, dealerHand, dealCard]);
 
 
   // Dealer's Turn
@@ -290,13 +297,13 @@ export default function BlackjackPage() {
     "grid gap-4 md:gap-8 w-full transition-all duration-500",
     {
         "md:grid-cols-1 lg:grid-cols-1": numPlayers <= 2,
-        "md:grid-cols-2 lg:grid-cols-3": numPlayers === 3,
-        "md:grid-cols-2 lg:grid-cols-4": numPlayers === 4,
+        "md:grid-cols-2 lg:grid-cols-2": numPlayers === 3,
+        "md:grid-cols-2 lg:grid-cols-2": numPlayers === 4,
     }
   );
 
   return (
-    <div className="flex flex-col min-h-screen items-center p-4 sm:p-6 md:p-8 font-body bg-zinc-900 text-zinc-50 overflow-y-auto">
+    <div className="flex flex-col min-h-screen items-center p-4 sm:p-6 md:p-8 font-body bg-background text-foreground overflow-y-auto">
       <header className="w-full max-w-7xl flex justify-between items-center my-4 sm:my-8 flex-shrink-0">
         <div className="text-left">
             <h1 className="text-4xl sm:text-6xl font-bold text-sky-400 font-headline tracking-tighter uppercase">
