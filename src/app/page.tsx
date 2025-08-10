@@ -14,10 +14,10 @@ import {
 import { getStrategy } from "@/lib/strategy";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, Dices, Shield, LucideGitCompare, LucideCopy, BarChart, Users, Sun, Moon, Armchair } from 'lucide-react';
+import { RefreshCw, Dices, Shield, LucideGitCompare, LucideCopy, BarChart, Users, Sun, Moon, Armchair, BadgeDollarSign, CircleDotDashed, Eraser } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
-type GameState = "setup" | "player-turn" | "ai-turn" | "dealer-turn" | "game-over";
+type GameState = "setup" | "betting" | "player-turn" | "ai-turn" | "dealer-turn" | "game-over";
 type StrategyMove = 'T' | 'R' | 'D' | 'S' | 'A';
 type Theme = 'dark' | 'light';
 
@@ -28,6 +28,8 @@ const strategyText: Record<StrategyMove, string> = {
     'S': "Séparer votre main (Split).",
     'A': "Abandonner (si possible)."
 };
+
+const chipValues = [5, 10, 50, 100];
 
 export default function BlackjackPage() {
   const [deck, setDeck] = useState<Card[]>([]);
@@ -42,6 +44,12 @@ export default function BlackjackPage() {
   const [playerHands, setPlayerHands] = useState<Card[][]>([[]]);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [theme, setTheme] = useState<Theme>('dark');
+  
+  // Betting state
+  const [balance, setBalance] = useState(1000);
+  const [currentBet, setCurrentBet] = useState(0);
+  const [lastBet, setLastBet] = useState(0);
+  const [isDoubled, setIsDoubled] = useState(false);
 
 
   useEffect(() => {
@@ -50,11 +58,21 @@ export default function BlackjackPage() {
     setTheme(savedTheme);
     if (savedTheme === 'dark') {
       document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
   }, []);
 
   useEffect(() => {
-    // Reset position if it's no longer valid
+    // Start with betting phase if player has money
+    if (gameState === 'setup') {
+      if (balance > 0) {
+        setGameState('betting');
+      }
+    }
+  }, [gameState, balance]);
+
+  useEffect(() => {
     if (humanPlayerPosition >= numPlayers) {
         setHumanPlayerPosition(numPlayers - 1);
     }
@@ -73,7 +91,7 @@ export default function BlackjackPage() {
   
   const dealCard = useCallback((currentDeck: Card[]): { card: Card; newDeck: Card[] } => {
     let deckToUse = [...currentDeck];
-    if (deckToUse.length < 20) { // Keep a buffer
+    if (deckToUse.length < 20) {
         deckToUse = shuffleDeck(createDeck());
         setResults(prev => ["Nouveau paquet mélangé.", ...prev])
     }
@@ -82,13 +100,25 @@ export default function BlackjackPage() {
     return { card, newDeck };
   }, []);
 
-  const startGame = useCallback(() => {
+  const placeBetAndStartGame = () => {
+    if (currentBet === 0) {
+        alert("Veuillez placer une mise.");
+        return;
+    }
+    if (currentBet > balance) {
+        alert("Votre mise ne peut pas dépasser votre solde.");
+        return;
+    }
+
+    setBalance(prev => prev - currentBet);
+    setLastBet(currentBet);
+    setIsDoubled(false);
+
     let currentDeck = shuffleDeck(createDeck());
     
     const initialPlayerHands: Card[][] = Array(numPlayers).fill(0).map(() => []);
     let initialDealerHand: Card[] = [];
     
-    // Deal 2 cards to each player and the dealer
     for (let i = 0; i < 2; i++) {
       for (let j = 0; j < numPlayers; j++) {
         const { card, newDeck } = dealCard(currentDeck);
@@ -107,7 +137,7 @@ export default function BlackjackPage() {
     const isHumanPlayerBlackjack = getBestScore(calculateHandValue(initialPlayerHands[humanPlayerPosition])) === 21;
     
     if (isHumanPlayerBlackjack) {
-        setCurrentPlayerIndex(0); // Start AI turn right away
+        setCurrentPlayerIndex(0);
         setGameState("ai-turn");
     } else {
         setCurrentPlayerIndex(humanPlayerPosition);
@@ -115,7 +145,7 @@ export default function BlackjackPage() {
     }
 
     setResults([]);
-  }, [dealCard, numPlayers, humanPlayerPosition]);
+  };
 
   const playerHand = useMemo(() => playerHands[humanPlayerPosition] ?? [], [playerHands, humanPlayerPosition]);
   const playerHandValue = useMemo(() => calculateHandValue(playerHand), [playerHand]);
@@ -123,13 +153,12 @@ export default function BlackjackPage() {
   
   const dealerVisibleScore = useMemo(() => {
     if (gameState !== 'game-over' && dealerHand.length > 1) {
-      // Show only the value of the visible card (the second one)
       return calculateHandValue([dealerHand[1]]);
     }
     return dealerHandValue;
   }, [gameState, dealerHand, dealerHandValue]);
 
-  const canDoubleDown = useMemo(() => playerHand.length === 2 && gameState === "player-turn" && currentPlayerIndex === humanPlayerPosition, [playerHand, gameState, currentPlayerIndex, humanPlayerPosition]);
+  const canDoubleDown = useMemo(() => playerHand.length === 2 && gameState === "player-turn" && currentPlayerIndex === humanPlayerPosition && balance >= currentBet, [playerHand, gameState, currentPlayerIndex, humanPlayerPosition, balance, currentBet]);
   const canSplit = useMemo(() => {
       return playerHand.length === 2 && playerHand[0].rank === playerHand[1].rank && gameState === "player-turn" && currentPlayerIndex === humanPlayerPosition;
   }, [playerHand, gameState, currentPlayerIndex, humanPlayerPosition]);
@@ -153,20 +182,23 @@ export default function BlackjackPage() {
 
     if (getBestScore(calculateHandValue(newPlayerHands[humanPlayerPosition])) > 21) {
       setGameState("ai-turn");
-      setCurrentPlayerIndex(0); // Start AI turns
+      setCurrentPlayerIndex(0);
     }
   };
 
   const handleStand = () => {
     if (gameState !== "player-turn" || currentPlayerIndex !== humanPlayerPosition) return;
     setGameState("ai-turn");
-    setCurrentPlayerIndex(0); // Start AI turns
+    setCurrentPlayerIndex(0);
   };
 
   const handleDoubleDown = () => {
     if (!canDoubleDown) return;
 
-    // Deal one more card and immediately stand.
+    setBalance(prev => prev - currentBet);
+    setCurrentBet(prev => prev * 2);
+    setIsDoubled(true);
+
     const { card, newDeck } = dealCard(deck);
     const newPlayerHands = [...playerHands];
     newPlayerHands[humanPlayerPosition] = [...newPlayerHands[humanPlayerPosition], card];
@@ -174,75 +206,78 @@ export default function BlackjackPage() {
     setPlayerHands(newPlayerHands);
     setDeck(newDeck);
     setGameState("ai-turn");
-    setCurrentPlayerIndex(0); // Start AI turns
+    setCurrentPlayerIndex(0);
   }
 
   const handleSplit = () => {
     if (!canSplit) return;
     alert("La fonctionnalité de Split n'est pas encore implémentée.");
-    // To properly implement split, we would need to manage two separate hands for the player,
-    // including separate betting, which adds significant complexity.
   }
   
   const handleStrategy = () => {
     setShowStrategyModal(true);
   }
 
-  const resetGame = () => {
-    setGameState('setup');
+  const resetGame = (fullReset = false) => {
+    if (fullReset) {
+      setBalance(1000);
+      setNumPlayers(1);
+      setHumanPlayerPosition(0);
+    }
+    setGameState('betting');
+    setCurrentBet(0);
     setPlayerHands([[]]);
     setDealerHand([]);
     setResults([]);
   }
 
+  const addToBet = (amount: number) => {
+    if (currentBet + amount <= balance) {
+        setCurrentBet(prev => prev + amount);
+    } else {
+        alert("Vous ne pouvez pas miser plus que votre solde.");
+    }
+  }
+
+  const clearBet = () => {
+      setCurrentBet(0);
+  }
+
   // AI Players' Turn
+  const playAiTurns = useCallback(async () => {
+    let hands = [...playerHands];
+    let currentDeck = [...deck];
+    
+    for (let i = 0; i < numPlayers; i++) {
+      if (i === humanPlayerPosition) continue;
+
+      setCurrentPlayerIndex(i);
+      
+      let botHand = hands[i];
+      let botHandValue = getBestScore(calculateHandValue(botHand));
+      
+      while (botHandValue < 17) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const { card, newDeck: updatedDeck } = dealCard(currentDeck);
+        currentDeck = updatedDeck;
+        botHand = [...botHand, card];
+        hands[i] = botHand;
+        botHandValue = getBestScore(calculateHandValue(botHand));
+        
+        setPlayerHands([...hands]);
+        setDeck(currentDeck);
+      }
+    }
+    
+    setGameState("dealer-turn");
+  }, [playerHands, deck, numPlayers, humanPlayerPosition, dealCard]);
+
   useEffect(() => {
     if (gameState === "ai-turn") {
-      let hands = [...playerHands];
-      let currentDeck = deck;
-      
-      const playNextAi = (botIndex: number) => {
-        // Finished with all players, move to dealer
-        if (botIndex >= numPlayers) {
-          setGameState("dealer-turn");
-          return;
-        }
-
-        // Skip the human player
-        if (botIndex === humanPlayerPosition) {
-          playNextAi(botIndex + 1);
-          return;
-        }
-
-        setCurrentPlayerIndex(botIndex);
-  
-        // Use a timeout to simulate bot thinking and show the active hand
-        setTimeout(() => {
-            let hand = hands[botIndex];
-            let handValue = getBestScore(calculateHandValue(hand));
-    
-            // Bot hits on 16 or less, or based on strategy (simplified here to hit on < 17)
-            if (handValue < 17) {
-                const { card, newDeck: updatedDeck } = dealCard(currentDeck);
-                currentDeck = updatedDeck;
-                hand = [...hand, card];
-                hands[botIndex] = hand;
-                setPlayerHands([...hands]);
-                setDeck(currentDeck);
-                // Recurse for the same bot to potentially hit again
-                playNextAi(botIndex); 
-            } else {
-                // Bot stands, move to next bot
-                playNextAi(botIndex + 1);
-            }
-        }, 1000); // 1 second delay for each bot's action
-      };
-      
-      // Start the AI turn from the first player (index 0)
-      playNextAi(0);
+        playAiTurns();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState, numPlayers, humanPlayerPosition, dealCard]);
+  }, [gameState, playAiTurns]);
 
 
   // Dealer's Turn
@@ -254,7 +289,6 @@ export default function BlackjackPage() {
       
       const dealerPlay = () => {
         let handValue = getBestScore(calculateHandValue(currentDealerHand));
-        // Dealer hits until 17 or more
         if (handValue < 17) {
           const { card, newDeck } = dealCard(currentDeck);
           currentDealerHand = [...currentDealerHand, card];
@@ -263,49 +297,142 @@ export default function BlackjackPage() {
           setDeck(currentDeck);
           setTimeout(dealerPlay, 1000);
         } else {
-          // Determine results once dealer stands
           const dealerScore = handValue;
           const finalResults: string[] = [];
           
           playerHands.forEach((pHand, index) => {
               const playerValue = getBestScore(calculateHandValue(pHand));
               const playerLabel = index === humanPlayerPosition ? "Vous" : `Bot ${index + 1}`;
+              const isHuman = index === humanPlayerPosition;
 
               if (playerValue > 21) {
                   finalResults.push(`${playerLabel} : Bust !`);
+                  if (isHuman) setResults(prev => [...prev, "Vous perdez votre mise."]);
               } else if (dealerScore > 21 || playerValue > dealerScore) {
                    finalResults.push(`${playerLabel} : Gagné !`);
+                   if (isHuman) {
+                       const isBlackjack = playerValue === 21 && pHand.length === 2;
+                       const winnings = isBlackjack ? lastBet * 1.5 : lastBet;
+                       const totalPayout = winnings + (isDoubled ? lastBet * 2 : lastBet);
+                       setBalance(prev => prev + totalPayout);
+                       setResults(prev => [...prev, `Vous gagnez ${isDoubled ? winnings*2 : winnings} !`]);
+                   }
               } else if (playerValue < dealerScore) {
                   finalResults.push(`${playerLabel} : Perdu.`);
+                  if (isHuman) setResults(prev => [...prev, "Vous perdez votre mise."]);
               } else {
                   finalResults.push(`${playerLabel} : Égalité.`);
+                   if (isHuman) {
+                       setBalance(prev => prev + lastBet);
+                       setResults(prev => [...prev, "Mise remboursée."]);
+                   }
               }
           });
           
-          setResults(finalResults);
+          setResults(prev => [...finalResults.reverse(), ...prev]);
           setGameState("game-over");
         }
       };
       
-      // Reveal hole card and start playing after a delay
       setTimeout(dealerPlay, 800);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState, dealCard, humanPlayerPosition]);
+  }, [gameState, dealCard, humanPlayerPosition, playerHands, lastBet, isDoubled]);
   
   if (!isClient) {
-    return null; // Render nothing on the server
+    return null;
   }
 
   const playerGridClass = cn(
     "grid gap-4 md:gap-8 w-full transition-all duration-500",
     {
-        "grid-cols-1 md:grid-cols-1 lg:grid-cols-1": numPlayers === 1,
-        "grid-cols-1 md:grid-cols-2 lg:grid-cols-2": numPlayers === 2,
+        "grid-cols-1 md:grid-cols-1 lg:grid-cols-1": numPlayers <= 2,
         "grid-cols-2 md:grid-cols-3 lg:grid-cols-3": numPlayers === 3,
         "grid-cols-2 md:grid-cols-2 lg:grid-cols-4": numPlayers === 4,
     }
   );
+
+  const MainContent = () => {
+    if (gameState === "betting") {
+        return (
+            <div className="flex flex-col items-center justify-center text-center">
+                <h2 className="text-3xl font-bold text-primary mb-2">Placez votre mise</h2>
+                <p className="text-muted-foreground mb-6">Solde actuel : <span className="font-bold text-foreground">{balance} $</span></p>
+
+                <div className="bg-card/80 p-6 rounded-lg shadow-lg mb-6">
+                    <h3 className="text-lg text-muted-foreground mb-2">Mise actuelle</h3>
+                    <p className="text-5xl font-bold text-primary">{currentBet} $</p>
+                </div>
+                
+                <div className="flex items-center justify-center gap-2 sm:gap-4 mb-6">
+                    {chipValues.map(value => (
+                        <Button key={value} onClick={() => addToBet(value)} variant="outline" className="rounded-full h-16 w-16 sm:h-20 sm:w-20 text-xl font-bold border-4 border-primary/50 flex flex-col">
+                            {value}
+                            <span className="text-xs font-normal">$</span>
+                        </Button>
+                    ))}
+                </div>
+
+                <div className="flex items-center gap-4">
+                     <Button onClick={clearBet} variant="ghost" size="lg">
+                        <Eraser className="mr-2"/>
+                        Annuler
+                    </Button>
+                    <Button onClick={() => setCurrentBet(lastBet > 0 ? lastBet : 0)} variant="outline" size="lg" disabled={lastBet === 0 || lastBet > balance}>
+                        <CircleDotDashed className="mr-2"/>
+                        Miser {lastBet > 0 ? lastBet : ''}
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    if (gameState === 'setup' && balance <= 0) {
+        return (
+            <div className="text-center">
+                <h2 className="text-3xl font-bold text-destructive mb-4">Partie terminée</h2>
+                <p className="text-muted-foreground mb-6">Vous n'avez plus d'argent. Voulez-vous recommencer ?</p>
+                <Button onClick={() => resetGame(true)} size="lg">
+                    <RefreshCw className="mr-2"/>
+                    Recommencer avec 1000 $
+                </Button>
+            </div>
+        )
+    }
+
+    return (
+        <>
+            <Hand
+              title="Main de la Banque"
+              cards={dealerHand}
+              score={dealerVisibleScore}
+              isDealer
+              isPlayerTurn={gameState !== 'game-over'}
+            />
+
+            <div className="relative h-12 sm:h-24 w-full flex items-center justify-center">
+                {gameState === 'game-over' && results.length > 0 && (
+                    <div className="animate-pop-in opacity-0 text-center py-2 px-4 sm:py-3 sm:px-6 rounded-lg bg-card/80 backdrop-blur-sm shadow-2xl shadow-primary/10 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                        {results.map((res, i) => <h3 key={i} className="text-md sm:text-lg font-bold text-primary">{res}</h3>)}
+                    </div>
+                )}
+            </div>
+
+           <div className={playerGridClass}>
+            {playerHands.map((pHand, index) => (
+                <Hand
+                  key={index}
+                  title={index === humanPlayerPosition ? `Votre Main (${isDoubled ? currentBet / 2 : currentBet}$)` : `Bot ${index + 1}`}
+                  cards={pHand}
+                  score={calculateHandValue(pHand)}
+                  isPlayerTurn={gameState.startsWith('player') || (gameState === 'ai-turn')}
+                  isActive={currentPlayerIndex === index && gameState !== 'game-over'}
+                />
+            ))}
+           </div>
+        </>
+    )
+  }
 
   return (
     <div className="flex flex-col min-h-screen items-center p-4 sm:p-6 md:p-8 font-body bg-background text-foreground">
@@ -314,7 +441,12 @@ export default function BlackjackPage() {
             <h1 className="text-4xl sm:text-6xl font-bold text-primary font-headline tracking-tighter uppercase">
             Blackjack Rapide
             </h1>
-            <p className="text-muted-foreground mt-2 text-sm sm:text-base">Le moyen le plus rapide de jouer une main. Bonne chance !</p>
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+                {gameState === 'betting' || gameState === 'game-over' || gameState === 'setup' ?
+                `Solde : ${balance}$` :
+                `Mise actuelle : ${currentBet}$`
+                }
+            </p>
         </div>
         <Button onClick={toggleTheme} variant="outline" size="icon">
             {theme === 'dark' ? <Sun className="h-[1.2rem] w-[1.2rem] text-primary" /> : <Moon className="h-[1.2rem] w-[1.2rem] text-primary" />}
@@ -323,48 +455,32 @@ export default function BlackjackPage() {
       </header>
       
       <main className="flex flex-col items-center justify-center w-full max-w-7xl space-y-4 sm:space-y-8 flex-grow">
-        {gameState !== "setup" && (
-            <Hand
-              title="Main de la Banque"
-              cards={dealerHand}
-              score={dealerVisibleScore}
-              isDealer
-              isPlayerTurn={gameState !== 'game-over'}
-            />
-        )}
-
-        <div className="relative h-12 sm:h-24 w-full flex items-center justify-center">
-            {gameState === 'game-over' && results.length > 0 && (
-                <div className="animate-pop-in opacity-0 text-center py-2 px-4 sm:py-3 sm:px-6 rounded-lg bg-card/80 backdrop-blur-sm shadow-2xl shadow-primary/10 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
-                    {results.map((res, i) => <h3 key={i} className="text-md sm:text-lg font-bold text-primary">{res}</h3>)}
-                </div>
-            )}
-        </div>
-
-        {gameState !== "setup" && (
-           <div className={playerGridClass}>
-            {playerHands.map((pHand, index) => (
-                <Hand
-                  key={index}
-                  title={index === humanPlayerPosition ? "Votre Main" : `Bot ${index + 1}`}
-                  cards={pHand}
-                  score={calculateHandValue(pHand)}
-                  isPlayerTurn={gameState.startsWith('player') || (gameState === 'ai-turn')}
-                  isActive={currentPlayerIndex === index && gameState !== 'game-over'}
-                />
-            ))}
-           </div>
-        )}
+        <MainContent />
       </main>
 
       <footer className="w-full max-w-5xl my-4 sm:my-8 flex-shrink-0">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-row justify-center items-center md:space-x-4 p-2 sm:p-4 rounded-lg">
-          {gameState === 'game-over' || gameState === 'setup' ? (
+          {gameState === 'game-over' ? (
+               <div className="col-span-full md:flex md:items-center md:gap-4 w-full flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <Button onClick={() => resetGame()} size="lg" variant="default" className="w-full sm:w-auto uppercase tracking-wider font-bold shadow-lg bg-primary text-primary-foreground hover:bg-primary/90">
+                      <RefreshCw className="mr-2" /> Rejouer
+                  </Button>
+                   <Button onClick={() => resetGame(true)} size="lg" variant="outline" className="w-full sm:w-auto">
+                        Changer les options & Réinitialiser
+                    </Button>
+               </div>
+          ) : gameState === 'betting' ? (
+                <div className="col-span-full md:flex md:items-center md:gap-4 w-full flex flex-col sm:flex-row items-center justify-center gap-4">
+                     <Button onClick={placeBetAndStartGame} size="lg" variant="default" className="w-full sm:w-auto uppercase tracking-wider font-bold shadow-lg bg-primary text-primary-foreground hover:bg-primary/90" disabled={currentBet === 0}>
+                        <BadgeDollarSign className="mr-2" /> Lancer la partie
+                    </Button>
+                </div>
+          ) : gameState === 'setup' && balance > 0 ? (
               <div className="col-span-full md:flex md:items-center md:gap-4 w-full flex flex-col sm:flex-row items-center justify-center gap-4">
                   <div className="flex items-center gap-2 text-lg">
                     <Users className="text-primary" />
                     <label htmlFor="player-count">Joueurs:</label>
-                    <Select value={String(numPlayers)} onValueChange={(val) => setNumPlayers(Number(val))} disabled={gameState !== 'setup'}>
+                    <Select value={String(numPlayers)} onValueChange={(val) => setNumPlayers(Number(val))}>
                         <SelectTrigger className="w-24 bg-card border-border">
                             <SelectValue placeholder="Joueurs" />
                         </SelectTrigger>
@@ -376,7 +492,7 @@ export default function BlackjackPage() {
                    <div className="flex items-center gap-2 text-lg">
                     <Armchair className="text-primary" />
                     <label htmlFor="player-position">Position:</label>
-                    <Select value={String(humanPlayerPosition + 1)} onValueChange={(val) => setHumanPlayerPosition(Number(val) - 1)} disabled={gameState !== 'setup'}>
+                    <Select value={String(humanPlayerPosition + 1)} onValueChange={(val) => setHumanPlayerPosition(Number(val) - 1)}>
                         <SelectTrigger className="w-24 bg-card border-border">
                             <SelectValue placeholder="Position" />
                         </SelectTrigger>
@@ -385,14 +501,9 @@ export default function BlackjackPage() {
                         </SelectContent>
                     </Select>
                   </div>
-                   <Button onClick={startGame} size="lg" variant="default" className="w-full sm:w-auto uppercase tracking-wider font-bold shadow-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                      <RefreshCw className="mr-2" /> Nouvelle Partie
+                   <Button onClick={() => setGameState('betting')} size="lg" variant="default" className="w-full sm:w-auto uppercase tracking-wider font-bold shadow-lg bg-primary text-primary-foreground hover:bg-primary/90">
+                       Suivant
                   </Button>
-                  {gameState === 'game-over' && (
-                     <Button onClick={resetGame} size="lg" variant="outline" className="w-full sm:w-auto">
-                        Changer les options
-                    </Button>
-                  )}
               </div>
           ) : gameState === 'player-turn' && currentPlayerIndex === humanPlayerPosition ? (
             <>
@@ -415,7 +526,7 @@ export default function BlackjackPage() {
           ) : (
             <div className="text-center col-span-full w-full">
               <p className="text-primary text-lg animate-pulse">
-                {gameState === 'player-turn' ? `Tour du Joueur ${currentPlayerIndex + 1}...` : 'Tour des bots...'}
+                {gameState.includes('turn') ? `Tour du ${currentPlayerIndex === humanPlayerPosition ? 'Joueur' : `Bot ${currentPlayerIndex + 1}`}...` : ''}
               </p>
             </div>
           )}
