@@ -46,7 +46,7 @@ export default function BlackjackPage() {
   const [theme, setTheme] = useState<Theme>('dark');
   
   // Betting state
-  const [balance, setBalance] = useState(1000);
+  const [balance, setBalance] = useState(100);
   const [currentBet, setCurrentBet] = useState(0);
   const [lastBet, setLastBet] = useState(0);
   const [isDoubled, setIsDoubled] = useState(false);
@@ -218,7 +218,7 @@ export default function BlackjackPage() {
 
   const resetGame = (fullReset = false) => {
     if (fullReset) {
-      setBalance(1000);
+      setBalance(100);
       setNumPlayers(1);
       setHumanPlayerPosition(0);
       setGameState('setup');
@@ -394,7 +394,7 @@ export default function BlackjackPage() {
                 <p className="text-muted-foreground mb-6">Vous n'avez plus d'argent. Voulez-vous recommencer ?</p>
                 <Button onClick={() => resetGame(true)} size="lg">
                     <RefreshCw className="mr-2"/>
-                    Recommencer avec 1000 $
+                    Recommencer avec 100 $
                 </Button>
             </div>
         )
