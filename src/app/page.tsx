@@ -64,11 +64,9 @@ export default function BlackjackPage() {
   }, []);
 
   useEffect(() => {
-    // Start with betting phase if player has money
-    if (gameState === 'setup') {
-      if (balance > 0) {
-        setGameState('betting');
-      }
+    // Start with setup phase
+    if (gameState === 'setup' && balance > 0) {
+      setGameState('setup');
     }
   }, [gameState, balance]);
 
@@ -223,8 +221,10 @@ export default function BlackjackPage() {
       setBalance(1000);
       setNumPlayers(1);
       setHumanPlayerPosition(0);
+      setGameState('setup');
+    } else {
+      setGameState('betting');
     }
-    setGameState('betting');
     setCurrentBet(0);
     setPlayerHands([[]]);
     setDealerHand([]);
@@ -399,6 +399,43 @@ export default function BlackjackPage() {
             </div>
         )
     }
+    
+    if (gameState === 'setup' && balance > 0) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-8 text-center bg-card/50 p-8 rounded-lg">
+                 <h2 className="text-3xl font-bold text-primary">Configurer la partie</h2>
+                  <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8 text-lg">
+                    <div className="flex items-center gap-2">
+                        <Users className="text-primary" />
+                        <label htmlFor="player-count">Joueurs:</label>
+                        <Select value={String(numPlayers)} onValueChange={(val) => setNumPlayers(Number(val))}>
+                            <SelectTrigger className="w-24 bg-card border-border">
+                                <SelectValue placeholder="Joueurs" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {[1, 2, 3, 4].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Armchair className="text-primary" />
+                        <label htmlFor="player-position">Position:</label>
+                        <Select value={String(humanPlayerPosition + 1)} onValueChange={(val) => setHumanPlayerPosition(Number(val) - 1)}>
+                            <SelectTrigger className="w-24 bg-card border-border">
+                                <SelectValue placeholder="Position" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Array.from({ length: numPlayers }, (_, i) => i + 1).map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                  </div>
+                   <Button onClick={() => setGameState('betting')} size="lg" variant="default" className="w-full sm:w-auto uppercase tracking-wider font-bold shadow-lg bg-primary text-primary-foreground hover:bg-primary/90">
+                       Commencer
+                  </Button>
+            </div>
+        )
+    }
 
     return (
         <>
@@ -475,36 +512,6 @@ export default function BlackjackPage() {
                         <BadgeDollarSign className="mr-2" /> Lancer la partie
                     </Button>
                 </div>
-          ) : gameState === 'setup' && balance > 0 ? (
-              <div className="col-span-full md:flex md:items-center md:gap-4 w-full flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <div className="flex items-center gap-2 text-lg">
-                    <Users className="text-primary" />
-                    <label htmlFor="player-count">Joueurs:</label>
-                    <Select value={String(numPlayers)} onValueChange={(val) => setNumPlayers(Number(val))}>
-                        <SelectTrigger className="w-24 bg-card border-border">
-                            <SelectValue placeholder="Joueurs" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {[1, 2, 3, 4].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                  </div>
-                   <div className="flex items-center gap-2 text-lg">
-                    <Armchair className="text-primary" />
-                    <label htmlFor="player-position">Position:</label>
-                    <Select value={String(humanPlayerPosition + 1)} onValueChange={(val) => setHumanPlayerPosition(Number(val) - 1)}>
-                        <SelectTrigger className="w-24 bg-card border-border">
-                            <SelectValue placeholder="Position" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {Array.from({ length: numPlayers }, (_, i) => i + 1).map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                  </div>
-                   <Button onClick={() => setGameState('betting')} size="lg" variant="default" className="w-full sm:w-auto uppercase tracking-wider font-bold shadow-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                       Suivant
-                  </Button>
-              </div>
           ) : gameState === 'player-turn' && currentPlayerIndex === humanPlayerPosition ? (
             <>
               <Button onClick={handleHit} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 uppercase tracking-wider font-bold shadow-lg col-span-1 text-xs px-2">
@@ -523,13 +530,15 @@ export default function BlackjackPage() {
                   <BarChart className="mr-1 sm:mr-2" /> Stratégie
               </Button>
             </>
-          ) : (
+          ) : gameState === 'setup' || (gameState.includes('turn') && currentPlayerIndex !== humanPlayerPosition) || gameState === 'dealer-turn' ? (
             <div className="text-center col-span-full w-full">
               <p className="text-primary text-lg animate-pulse">
-                {gameState.includes('turn') ? `Tour du ${currentPlayerIndex === humanPlayerPosition ? 'Joueur' : `Bot ${currentPlayerIndex + 1}`}...` : ''}
+                {gameState === 'setup' ? 'Configuration de la partie...' : ''}
+                {gameState.includes('turn') && currentPlayerIndex !== -1 && currentPlayerIndex !== humanPlayerPosition ? `Tour du Bot ${currentPlayerIndex + 1}...` : ''}
+                 {gameState === 'dealer-turn' ? 'Tour de la banque...' : ''}
               </p>
             </div>
-          )}
+          ) : null }
         </div>
       </footer>
       <AlertDialog open={showStrategyModal} onOpenChange={setShowStrategyModal}>
